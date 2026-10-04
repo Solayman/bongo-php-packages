@@ -53,6 +53,19 @@
           }
         }
       }
+    },
+    "social-login": {
+      "name": "social-login",
+      "latest": "1.0.0",
+      "description": "OAuth 2.0 social authentication for Google, GitHub, and Facebook",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

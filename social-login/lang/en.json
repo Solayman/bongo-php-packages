@@ -1,0 +1,9 @@
+{
+  "Continue with Google": "Continue with Google",
+  "Continue with Facebook": "Continue with Facebook",
+  "Continue with GitHub": "Continue with GitHub",
+  "Or connect with": "Or connect with",
+  "Invalid OAuth state. Please try again.": "Invalid OAuth state. Please try again.",
+  "Authentication failed with :provider.": "Authentication failed with :provider.",
+  "Unable to retrieve your email address from :provider.": "Unable to retrieve your email address from :provider."
+}

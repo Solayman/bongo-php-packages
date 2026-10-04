@@ -1,0 +1,9 @@
+{
+  "Continue with Google": "গুগল দিয়ে প্রবেশ করুন",
+  "Continue with Facebook": "ফেসবুক দিয়ে প্রবেশ করুন",
+  "Continue with GitHub": "গিটহাব দিয়ে প্রবেশ করুন",
+  "Or connect with": "অথবা সংযোগ করুন",
+  "Invalid OAuth state. Please try again.": "নিরাপত্তা যাচাই ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।",
+  "Authentication failed with :provider.": ":provider দিয়ে লগইন সম্পন্ন হয়নি।",
+  "Unable to retrieve your email address from :provider.": ":provider থেকে আপনার ইমেইল পাওয়া যায়নি।"
+}
