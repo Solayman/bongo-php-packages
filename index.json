@@ -40,6 +40,19 @@
           }
         }
       }
+    },
+    "s3": {
+      "name": "s3",
+      "latest": "1.0.0",
+      "description": "S3, DigitalOcean Spaces, Cloudflare R2, and MinIO cloud storage driver",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
