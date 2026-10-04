@@ -1,0 +1,188 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Bongo\Packages\ActivityLog\Tests;
+
+use Bongo\Packages\ActivityLog\ActivityLog;
+use Bongo\Packages\ActivityLog\Commands\ActivityCleanCommand;
+use Bongo\Packages\ActivityLog\Models\Activity;
+use Bongo\Packages\ActivityLog\Traits\LogsActivity;
+use System\Database\Model;
+use System\Database\Schema\Blueprint;
+use System\Database\Schema\Schema;
+use System\Testing\TestCase;
+
+require_once __DIR__ . '/../src/Helpers.php';
+
+class TestArticle extends Model
+{
+    use LogsActivity;
+
+    protected static $table = 'test_activity_articles';
+    protected array $fillable = ['id', 'title', 'content', 'status', 'password'];
+}
+
+class TestUser extends Model
+{
+    protected static $table = 'test_activity_users';
+    protected array $fillable = ['id', 'name', 'email'];
+}
+
+class ActivityLogTest extends TestCase
+{
+    public function setUp(): void
+    {
+        Schema::dropIfExists('test_activity_articles');
+        Schema::dropIfExists('test_activity_users');
+        Schema::dropIfExists('activity_log');
+
+        Schema::create('activity_log', function (Blueprint $table) {
+            $table->id();
+            $table->string('log_name')->default('default');
+            $table->text('description');
+            $table->string('subject_type')->nullable();
+            $table->string('subject_id')->nullable();
+            $table->string('causer_type')->nullable();
+            $table->string('causer_id')->nullable();
+            $table->text('properties')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('test_activity_articles', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content')->nullable();
+            $table->string('status')->default('draft');
+            $table->string('password')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('test_activity_users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email');
+            $table->timestamps();
+        });
+
+        $_SERVER['REMOTE_ADDR'] = '192.168.1.50';
+        $_SERVER['HTTP_USER_AGENT'] = 'BongoTestBrowser/1.0';
+    }
+
+    public function tearDown(): void
+    {
+        Schema::dropIfExists('test_activity_articles');
+        Schema::dropIfExists('test_activity_users');
+        Schema::dropIfExists('activity_log');
+    }
+
+    public function testBasicActivityLogging(): void
+    {
+        $log = activity()->log('User logged in');
+
+        $this->assertTrue($log instanceof Activity);
+        $this->assertSame('User logged in', $log->description);
+        $this->assertSame('default', $log->log_name);
+        $this->assertSame('192.168.1.50', $log->ip_address);
+        $this->assertSame('BongoTestBrowser/1.0', $log->user_agent);
+    }
+
+    public function testSubjectAndCauserAssociation(): void
+    {
+        $user = new TestUser(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user->save();
+
+        $article = new TestArticle(['title' => 'First Post']);
+        $article->save();
+
+        $log = activity('editorial')
+            ->performedOn($article)
+            ->causedBy($user)
+            ->log('Article published');
+
+        $this->assertSame('editorial', $log->log_name);
+        $this->assertSame(TestArticle::class, $log->subject_type);
+        $this->assertSame((string) $article->id, $log->subject_id);
+        $this->assertSame(TestUser::class, $log->causer_type);
+        $this->assertSame((string) $user->id, $log->causer_id);
+    }
+
+    public function testPropertiesJsonSerializationAndExtraction(): void
+    {
+        $log = activity()
+            ->withProperties(['browser' => 'Chrome', 'screen' => '1920x1080', 'count' => 5])
+            ->withProperty('tags', ['php', 'mvc'])
+            ->log('Dashboard viewed');
+
+        $props = $log->getProperties();
+        $this->assertTrue(is_array($props));
+        $this->assertSame('Chrome', $log->getExtraProperty('browser'));
+        $this->assertSame(5, $log->getExtraProperty('count'));
+        $this->assertSame(['php', 'mvc'], $log->getExtraProperty('tags'));
+        $this->assertSame('default_val', $log->getExtraProperty('missing_key', 'default_val'));
+    }
+
+    public function testQueryScopes(): void
+    {
+        $user = new TestUser(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $user->save();
+
+        $article = new TestArticle(['title' => 'Scoped Post']);
+        $article->save();
+
+        activity('security')->causedBy($user)->log('Password changed');
+        activity('editorial')->performedOn($article)->log('Article viewed');
+
+        $securityLogs = Activity::query()->where('log_name', 'security')->get();
+        $this->assertCount(1, $securityLogs);
+        $this->assertSame('Password changed', $securityLogs[0]->description);
+
+        $articleLogs = Activity::query()
+            ->where('subject_type', TestArticle::class)
+            ->where('subject_id', (string) $article->id)
+            ->get();
+        $this->assertCount(1, $articleLogs);
+        $this->assertSame('Article viewed', $articleLogs[0]->description);
+    }
+
+    public function testLogsActivityTrait(): void
+    {
+        $article = new TestArticle(['title' => 'Trait Article', 'content' => 'Lorem ipsum']);
+        $article->save();
+
+        // 1. Manual logActivity from model
+        $log = $article->logActivity('Article reviewed');
+        $this->assertSame('Article reviewed', $log->description);
+        $this->assertSame((string) $article->id, $log->subject_id);
+
+        // 2. Automated recordActivity on update with diff tracking
+        $article->title = 'Updated Title';
+        $article->status = 'published';
+        $recordLog = $article->recordActivity('updated');
+
+        $this->assertContains('TestArticle updated', $recordLog->description);
+        $props = $recordLog->getProperties();
+        $this->assertArrayHasKey('attributes', $props);
+        $this->assertSame('Updated Title', $props['attributes']['title']);
+        $this->assertSame('published', $props['attributes']['status']);
+        // Password should be filtered out
+        $this->assertFalse(array_key_exists('password', $props['attributes']));
+    }
+
+    public function testActivityCleanCommand(): void
+    {
+        activity()->log('Recent log 1');
+        activity()->log('Recent log 2');
+
+        $cmd = new ActivityCleanCommand();
+
+        ob_start();
+        $status = $cmd->handle([], ['days' => 0]);
+        $output = ob_get_clean();
+
+        $this->assertSame(0, $status);
+        $this->assertContains('Cleaned', $output);
+    }
+}
