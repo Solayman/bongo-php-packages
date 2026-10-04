@@ -209,6 +209,19 @@
           }
         }
       }
+    },
+    "seo": {
+      "name": "seo",
+      "latest": "1.0.0",
+      "description": "Search Engine Optimization (SEO), OpenGraph, Twitter Cards, Schema.org JSON-LD, and dynamic XML Sitemap generator",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
