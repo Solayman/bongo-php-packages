@@ -235,6 +235,19 @@
           }
         }
       }
+    },
+    "health": {
+      "name": "health",
+      "latest": "1.0.0",
+      "description": "Application health checks and uptime monitoring for database, storage, cache, redis, and disk space",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
