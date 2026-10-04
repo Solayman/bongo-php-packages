@@ -81,8 +81,8 @@ class S3Test extends TestCase
         $this->assertTrue($disk->exists('found.txt'));
         $this->assertFalse($disk->missing('found.txt'));
 
-        $this->assertFalse($disk->exists('not_found.txt'));
-        $this->assertTrue($disk->missing('not_found.txt'));
+        $this->assertFalse($disk->exists('missing.txt'));
+        $this->assertTrue($disk->missing('missing.txt'));
     }
 
     public function testSizeAndLastModified(): void
