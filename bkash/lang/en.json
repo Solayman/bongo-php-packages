@@ -1,0 +1,18 @@
+{
+  "Pay with bKash": "Pay with bKash",
+  "You will be redirected securely to the bKash payment gateway to enter your bKash mobile number and complete verification.": "You will be redirected securely to the bKash payment gateway to enter your bKash mobile number and complete verification.",
+  "Proceed to bKash Payment": "Proceed to bKash Payment",
+  "Payment Successful": "Payment Successful",
+  "Thank you! Your bKash payment has been verified successfully.": "Thank you! Your bKash payment has been verified successfully.",
+  "bKash TrxID": "bKash TrxID",
+  "Payment ID": "Payment ID",
+  "Amount Paid": "Amount Paid",
+  "Account Number": "Account Number",
+  "Return to Store": "Return to Store",
+  "Payment Failed": "Payment Failed",
+  "We could not verify your bKash payment. Please try again or use another payment method.": "We could not verify your bKash payment. Please try again or use another payment method.",
+  "Try Again": "Try Again",
+  "Payment Cancelled": "Payment Cancelled",
+  "You cancelled the bKash payment process. No money was deducted from your bKash wallet.": "You cancelled the bKash payment process. No money was deducted from your bKash wallet.",
+  "Resume Checkout": "Resume Checkout"
+}
