@@ -1,0 +1,19 @@
+{
+  "Pay with Nagad": "Pay with Nagad",
+  "You will be redirected securely to the Nagad payment gateway to enter your Nagad account number and complete verification.": "You will be redirected securely to the Nagad payment gateway to enter your Nagad account number and complete verification.",
+  "Proceed to Nagad Payment": "Proceed to Nagad Payment",
+  "Payment Successful": "Payment Successful",
+  "Thank you! Your Nagad payment has been verified successfully.": "Thank you! Your Nagad payment has been verified successfully.",
+  "Nagad Transaction ID": "Nagad Transaction ID",
+  "Payment Reference ID": "Payment Reference ID",
+  "Order ID": "Order ID",
+  "Amount Paid": "Amount Paid",
+  "Account Number": "Account Number",
+  "Return to Store": "Return to Store",
+  "Payment Failed": "Payment Failed",
+  "We could not verify your Nagad payment. Please try again or use another payment method.": "We could not verify your Nagad payment. Please try again or use another payment method.",
+  "Try Again": "Try Again",
+  "Payment Cancelled": "Payment Cancelled",
+  "You cancelled the Nagad payment process. No money was deducted from your Nagad wallet.": "You cancelled the Nagad payment process. No money was deducted from your Nagad wallet.",
+  "Resume Checkout": "Resume Checkout"
+}
