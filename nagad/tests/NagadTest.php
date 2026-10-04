@@ -14,11 +14,13 @@ class NagadTest extends TestCase
     protected static array $testMerchantKeys;
     protected static array $testNagadKeys;
 
-    public static function setUpBeforeClass(): void
+    public function setUp(): void
     {
-        // Generate test RSA keypairs once for the test run
-        self::$testMerchantKeys = Nagad::generateKeyPair(1024);
-        self::$testNagadKeys = Nagad::generateKeyPair(1024);
+        if (empty(self::$testMerchantKeys)) {
+            // Generate test RSA keypairs once for the test run
+            self::$testMerchantKeys = Nagad::generateKeyPair(1024);
+            self::$testNagadKeys = Nagad::generateKeyPair(1024);
+        }
 
         if (class_exists(\System\View\ViewEngine::class)) {
             \System\View\ViewEngine::addNamespace('nagad', dirname(__DIR__) . '/views');

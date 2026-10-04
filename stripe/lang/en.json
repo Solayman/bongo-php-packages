@@ -1,0 +1,13 @@
+{
+  "Pay with Stripe": "Pay with Stripe",
+  "Pay Now": "Pay Now",
+  "Payment Successful": "Payment Successful",
+  "Thank you for your payment.": "Thank you for your payment.",
+  "Transaction ID": "Transaction ID",
+  "Amount Paid": "Amount Paid",
+  "Payment Cancelled": "Payment Cancelled",
+  "Your payment process was cancelled.": "Your payment process was cancelled.",
+  "Return to Store": "Return to Store",
+  "Payment Failed": "Payment Failed",
+  "An error occurred while processing your payment.": "An error occurred while processing your payment."
+}
