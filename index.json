@@ -105,6 +105,19 @@
           }
         }
       }
+    },
+    "image": {
+      "name": "image",
+      "latest": "1.0.0",
+      "description": "Pure-PHP image resizing, smart cropping, watermarking, filters, and WebP optimization",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
