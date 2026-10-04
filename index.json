@@ -92,6 +92,19 @@
           }
         }
       }
+    },
+    "two-factor": {
+      "name": "two-factor",
+      "latest": "1.0.0",
+      "description": "RFC 6238 TOTP two-factor authentication with pure-PHP SVG QR codes and recovery codes",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
