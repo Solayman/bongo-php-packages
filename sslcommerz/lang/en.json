@@ -1,0 +1,18 @@
+{
+  "Pay with SSLCommerz": "Pay with SSLCommerz",
+  "You will be redirected securely to SSLCommerz to complete your payment with cards, mobile banking, or net banking.": "You will be redirected securely to SSLCommerz to complete your payment with cards, mobile banking, or net banking.",
+  "Proceed to Payment": "Proceed to Payment",
+  "Payment Successful": "Payment Successful",
+  "Thank you! Your payment has been received and verified.": "Thank you! Your payment has been received and verified.",
+  "Transaction ID": "Transaction ID",
+  "Amount Paid": "Amount Paid",
+  "Bank Reference": "Bank Reference",
+  "Payment Method": "Payment Method",
+  "Return to Store": "Return to Store",
+  "Payment Failed": "Payment Failed",
+  "Your payment could not be processed. No charges were made to your account.": "Your payment could not be processed. No charges were made to your account.",
+  "Try Again": "Try Again",
+  "Payment Cancelled": "Payment Cancelled",
+  "You cancelled the transaction before completing the payment.": "You cancelled the transaction before completing the payment.",
+  "Return to Cart": "Return to Cart"
+}

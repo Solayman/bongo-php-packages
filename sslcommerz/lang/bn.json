@@ -1,0 +1,18 @@
+{
+  "Pay with SSLCommerz": "এসএসএলকমার্জ দিয়ে পরিশোধ করুন",
+  "You will be redirected securely to SSLCommerz to complete your payment with cards, mobile banking, or net banking.": "কার্ড, মোবাইল ব্যাংকিং অথবা নেট ব্যাংকিং এর মাধ্যমে নিরাপদে পেমেন্ট সম্পন্ন করতে আপনাকে এসএসএলকমার্জ গেটওয়েতে পাঠানো হবে।",
+  "Proceed to Payment": "পেমেন্ট করতে এগিয়ে যান",
+  "Payment Successful": "পেমেন্ট সফল হয়েছে",
+  "Thank you! Your payment has been received and verified.": "ধন্যবাদ! আপনার পেমেন্ট সফলভাবে গ্রহণ ও যাচাই করা হয়েছে।",
+  "Transaction ID": "লেনদেন নম্বর (Transaction ID)",
+  "Amount Paid": "পরিশোধিত টাকার পরিমাণ",
+  "Bank Reference": "ব্যাংক রেফারেন্স নম্বর",
+  "Payment Method": "পেমেন্ট মাধ্যম",
+  "Return to Store": "দোকানে ফিরে যান",
+  "Payment Failed": "পেমেন্ট ব্যর্থ হয়েছে",
+  "Your payment could not be processed. No charges were made to your account.": "আপনার পেমেন্টটি সম্পন্ন করা যায়নি। আপনার অ্যাকাউন্ট থেকে কোনো টাকা কাটা হয়নি।",
+  "Try Again": "আবার চেষ্টা করুন",
+  "Payment Cancelled": "পেমেন্ট বাতিল করা হয়েছে",
+  "You cancelled the transaction before completing the payment.": "পেমেন্ট সম্পন্ন করার আগেই আপনি লেনদেনটি বাতিল করেছেন।",
+  "Return to Cart": "কার্টে ফিরে যান"
+}

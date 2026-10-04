@@ -1,5 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": 1,
-  "packages": {}
+  "packages": {
+    "sslcommerz": {
+      "name": "sslcommerz",
+      "latest": "1.0.0",
+      "description": "SSLCommerz payment gateway for Bangladesh",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    }
+  }
 }
