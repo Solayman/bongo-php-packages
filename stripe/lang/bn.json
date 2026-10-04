@@ -1,0 +1,13 @@
+{
+  "Pay with Stripe": "স্ট্রাইপ দিয়ে পরিশোধ করুন",
+  "Pay Now": "এখনই পরিশোধ করুন",
+  "Payment Successful": "পেমেন্ট সফল হয়েছে",
+  "Thank you for your payment.": "আপনার পেমেন্টের জন্য ধন্যবাদ।",
+  "Transaction ID": "লেনদেন আইডি (Transaction ID)",
+  "Amount Paid": "পরিশোধিত অর্থ",
+  "Payment Cancelled": "পেমেন্ট বাতিল করা হয়েছে",
+  "Your payment process was cancelled.": "আপনার পেমেন্ট প্রক্রিয়াটি বাতিল করা হয়েছে।",
+  "Return to Store": "দোকানে ফিরে যান",
+  "Payment Failed": "পেমেন্ট ব্যর্থ হয়েছে",
+  "An error occurred while processing your payment.": "পেমেন্ট সম্পন্ন করার সময় একটি ত্রুটি ঘটেছে।"
+}

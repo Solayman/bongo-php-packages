@@ -79,6 +79,19 @@
           }
         }
       }
+    },
+    "stripe": {
+      "name": "stripe",
+      "latest": "1.0.0",
+      "description": "Stripe international payments, Checkout Sessions, and webhooks",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
