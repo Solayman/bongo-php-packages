@@ -23,7 +23,7 @@ class FileManagerService
         return Storage::disk($this->disk);
     }
 
-    protected function resolveFullPath(string $subPath = ''): string
+    public function resolveFullPath(string $subPath = ''): string
     {
         $cleanSub = PathSecurity::sanitize($subPath);
         $combined = trim($this->baseDir . '/' . $cleanSub, '/');

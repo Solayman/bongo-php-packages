@@ -174,4 +174,18 @@ class FileManagerTest extends TestCase
         $this->assertContains('type=image', $url);
         $this->assertContains('callback=pickerCallback', $url);
     }
+
+    public function testDownloadEndpointReturns404OnMissingFile(): void
+    {
+        $controller = new FileManagerController();
+        $_GET['path'] = 'non_existent_file.pdf';
+        $req = new Request();
+
+        ob_start();
+        $controller->download($req);
+        $output = ob_get_clean();
+
+        $this->assertSame('File not found.', $output);
+        unset($_GET['path']);
+    }
 }
