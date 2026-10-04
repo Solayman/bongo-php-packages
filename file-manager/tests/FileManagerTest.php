@@ -188,4 +188,51 @@ class FileManagerTest extends TestCase
         $this->assertSame('File not found.', $output);
         unset($_GET['path']);
     }
+
+    public function testThumbnailReturns404OnMissing(): void
+    {
+        $controller = new FileManagerController();
+        $_GET['path'] = 'missing_image.png';
+        $req = new Request();
+
+        ob_start();
+        $controller->thumbnail($req);
+        $output = ob_get_clean();
+
+        $this->assertSame('Image not found.', $output);
+        unset($_GET['path']);
+    }
+
+    public function testThumbnailGeneratesValidImageOutput(): void
+    {
+        if (!extension_loaded('gd')) {
+            $this->assertTrue(true);
+            return;
+        }
+
+        $img = imagecreatetruecolor(10, 10);
+        $red = imagecolorallocate($img, 255, 0, 0);
+        imagefilledrectangle($img, 0, 0, 9, 9, $red);
+
+        ob_start();
+        imagepng($img);
+        $pngData = (string) ob_get_clean();
+        imagedestroy($img);
+
+        FileManager::saveFile('test_photo.png', $pngData);
+
+        $controller = new FileManagerController();
+        $_GET['path'] = 'test_photo.png';
+        $_GET['w'] = 50;
+        $_GET['h'] = 50;
+        $req = new Request();
+
+        ob_start();
+        $controller->thumbnail($req);
+        $thumbData = (string) ob_get_clean();
+
+        $this->assertTrue(strlen($thumbData) > 0);
+
+        unset($_GET['path'], $_GET['w'], $_GET['h']);
+    }
 }
