@@ -248,6 +248,19 @@
           }
         }
       }
+    },
+    "file-manager": {
+      "name": "file-manager",
+      "latest": "1.0.0",
+      "description": "Zero-dependency web file manager with folder tree, media preview, WYSIWYG connector, and professional code editor",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
