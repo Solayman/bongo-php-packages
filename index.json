@@ -118,6 +118,19 @@
           }
         }
       }
+    },
+    "backup": {
+      "name": "backup",
+      "latest": "1.0.0",
+      "description": "Zero-dependency database and asset backup engine with multi-disk storage and retention cleanup",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
