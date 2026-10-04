@@ -9,7 +9,7 @@ use System\Testing\TestCase;
 
 class BKashTest extends TestCase
 {
-    protected function tearDown(): void
+    public function tearDown(): void
     {
         BKash::setMockTransport(null);
     }
