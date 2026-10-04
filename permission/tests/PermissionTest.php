@@ -256,4 +256,39 @@ class PermissionTest extends TestCase
         $ex3 = UnauthorizedException::notLoggedIn();
         $this->assertSame(401, $ex3->getStatusCode());
     }
+
+    public function testBatchedPermissionsAndRolePermissionsNoNPlusOne(): void
+    {
+        $user = TestUser::create(['name' => 'Eve', 'email' => 'eve@example.com']);
+
+        // Batch assign multiple permissions
+        $user->givePermissionTo(['read-articles', 'comment-articles']);
+        $this->assertTrue($user->hasDirectPermission('read-articles'));
+        $this->assertTrue($user->hasDirectPermission('comment-articles'));
+
+        // Multiple roles with multiple permissions
+        $role1 = Role::findOrCreate('editor');
+        $role1->givePermissionTo(['publish-articles', 'unpublish-articles']);
+
+        $role2 = Role::findOrCreate('moderator');
+        $role2->givePermissionTo(['flag-comments', 'delete-comments']);
+
+        // Batch assign roles
+        $user->assignRole(['editor', 'moderator']);
+
+        // Check permissions via roles
+        $this->assertTrue($user->can('publish-articles'));
+        $this->assertTrue($user->can('delete-comments'));
+        $this->assertFalse($user->can('unknown-permission'));
+
+        $rolePerms = $user->getRolePermissions();
+        $this->assertTrue(in_array('publish-articles', $rolePerms, true));
+        $this->assertTrue(in_array('delete-comments', $rolePerms, true));
+
+        $all = $user->getAllPermissions();
+        $this->assertCount(6, $all);
+        $this->assertTrue(in_array('read-articles', $all, true));
+        $this->assertTrue(in_array('publish-articles', $all, true));
+        $this->assertTrue(in_array('flag-comments', $all, true));
+    }
 }

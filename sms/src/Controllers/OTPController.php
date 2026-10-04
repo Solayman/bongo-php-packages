@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bongo\Packages\Sms\Controllers;
 
 use Bongo\Packages\Sms\OTP;

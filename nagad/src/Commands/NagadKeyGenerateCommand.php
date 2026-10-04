@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bongo\Packages\Nagad\Commands;
 
 use Bongo\Packages\Nagad\Nagad;

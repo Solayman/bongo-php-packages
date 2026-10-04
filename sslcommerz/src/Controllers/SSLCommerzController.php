@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bongo\Packages\Sslcommerz\Controllers;
 
 use Bongo\Packages\Sslcommerz\SSLCommerz;

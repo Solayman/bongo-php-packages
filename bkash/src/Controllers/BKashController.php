@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bongo\Packages\Bkash\Controllers;
 
 use Bongo\Packages\Bkash\BKash;

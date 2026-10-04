@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bongo\Packages\S3\Commands;
 
 use Bongo\Packages\S3\S3Disk;

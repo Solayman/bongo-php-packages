@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bongo\Packages\ActivityLog\Models;
 
+use Bongo\Packages\ActivityLog\ActivityLogger;
 use System\Database\Model;
 
 class Activity extends Model
@@ -64,10 +65,9 @@ class Activity extends Model
      */
     public function scopeForSubject($query, mixed $subject)
     {
-        if (is_object($subject)) {
-            $type = get_class($subject);
-            $id = method_exists($subject, 'getKey') ? (string) $subject->getKey() : (string) ($subject->id ?? '');
-            return $query->where('subject_type', $type)->where('subject_id', $id);
+        $morph = ActivityLogger::resolveMorph($subject);
+        if ($morph !== null) {
+            return $query->where('subject_type', $morph[0])->where('subject_id', $morph[1]);
         }
 
         return $query;
@@ -78,10 +78,9 @@ class Activity extends Model
      */
     public function scopeCausedBy($query, mixed $causer)
     {
-        if (is_object($causer)) {
-            $type = get_class($causer);
-            $id = method_exists($causer, 'getKey') ? (string) $causer->getKey() : (string) ($causer->id ?? '');
-            return $query->where('causer_type', $type)->where('causer_id', $id);
+        $morph = ActivityLogger::resolveMorph($causer);
+        if ($morph !== null) {
+            return $query->where('causer_type', $morph[0])->where('causer_id', $morph[1]);
         }
 
         return $query;

@@ -157,4 +157,22 @@ class SettingsTest extends TestCase
         ob_end_clean();
         $this->assertSame(0, $resClear);
     }
+
+    public function testBatchLoadSettings(): void
+    {
+        Setting::set([
+            'batch.key1' => 'alpha',
+            'batch.key2' => 'beta',
+            'batch.key3' => 'gamma',
+        ]);
+
+        // Reset memory cache to test single-query batch loading from DB
+        \Bongo\Packages\Settings\SettingsManager::setInstance(null);
+
+        $loaded = \setting()->load(['batch.key1', 'batch.key2', 'batch.key3', 'batch.nonexistent']);
+        $this->assertSame('alpha', $loaded['batch.key1']);
+        $this->assertSame('beta', $loaded['batch.key2']);
+        $this->assertSame('gamma', $loaded['batch.key3']);
+        $this->assertNull($loaded['batch.nonexistent']);
+    }
 }
