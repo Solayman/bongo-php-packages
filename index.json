@@ -196,6 +196,19 @@
           }
         }
       }
+    },
+    "settings": {
+      "name": "settings",
+      "latest": "1.0.0",
+      "description": "Dynamic application and store settings in database with type casting, caching, CLI, and template directive",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
