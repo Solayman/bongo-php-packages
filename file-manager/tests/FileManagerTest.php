@@ -235,4 +235,25 @@ class FileManagerTest extends TestCase
 
         unset($_GET['path'], $_GET['w'], $_GET['h']);
     }
+
+    public function testAllowedForUploadSecurity(): void
+    {
+        $this->assertTrue(PathSecurity::isAllowedForUpload('photo.jpg'));
+        $this->assertTrue(PathSecurity::isAllowedForUpload('document.pdf'));
+
+        // Reject dangerous executables
+        $this->assertFalse(PathSecurity::isAllowedForUpload('script.php.exe'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('malware.exe'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.sh'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('backdoor.phtml'));
+
+        // Reject hidden files and configuration overrides
+        $this->assertFalse(PathSecurity::isAllowedForUpload('.htaccess'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('.env'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('.user.ini'));
+
+        // Reject multi-extension execution tricks
+        $this->assertFalse(PathSecurity::isAllowedForUpload('avatar.php.png'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('file.phtml.jpg'));
+    }
 }

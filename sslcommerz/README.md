@@ -1,5 +1,10 @@
 # SSLCommerz Payment Gateway for Bongo
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="sslcommerz screenshot" width="800">
+</p>
 Official zero-dependency SSLCommerz payment gateway integration for the Bongo PHP framework.
 
 ## 🚀 3-Step Quick Start

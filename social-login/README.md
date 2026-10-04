@@ -1,5 +1,10 @@
 # Bongo Social Login (OAuth 2.0) Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="social-login screenshot" width="800">
+</p>
 Seamless Google, GitHub, and Facebook OAuth 2.0 social login for the Bongo Framework.
 
 Zero external dependencies, pure PHP implementation utilizing Bongo's built-in HTTP client and Auth subsystems.

@@ -1,5 +1,10 @@
 # FTP Storage Driver for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="ftp screenshot" width="800">
+</p>
 Official zero-dependency FTP and FTPS filesystem driver and client for Bongo PHP Framework. Connects Bongo's `Storage` facade directly to remote FTP servers, supporting both native PHP `ext-ftp` and pure-PHP raw socket transport fallback with zero required extensions.
 
 ---

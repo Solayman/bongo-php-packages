@@ -1,5 +1,10 @@
 # PayPal Package for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="paypal screenshot" width="800">
+</p>
 Official zero-dependency PayPal payment gateway package for Bongo PHP Framework. Supports PayPal REST API v2 Checkout, order creation, payment capture, authorization, refunds, and cryptographically verified webhooks via pure PHP without external Composer libraries.
 
 ---

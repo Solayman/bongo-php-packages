@@ -1,5 +1,10 @@
 # Backup Manager for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="backup screenshot" width="800">
+</p>
 Official zero-dependency database and application asset backup package for Bongo PHP Framework. Create atomic snapshots of your MySQL, PostgreSQL, or SQLite database alongside user uploads and storage files into compressed `.zip` archives with automatic retention cleanup and optional cloud storage (AWS S3, Cloudflare R2, MinIO).
 
 ---

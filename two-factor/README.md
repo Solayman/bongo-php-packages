@@ -1,5 +1,10 @@
 # Two-Factor Authentication (2FA) for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="two-factor screenshot" width="800">
+</p>
 Official zero-dependency RFC 6238 TOTP Two-Factor Authentication package for Bongo PHP Framework. Works with Google Authenticator, Authy, 1Password, and Microsoft Authenticator with a native pure-PHP SVG QR code generator, single-use recovery codes, and verification middleware.
 
 ---

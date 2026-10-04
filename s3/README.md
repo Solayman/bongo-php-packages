@@ -1,5 +1,10 @@
 # Bongo S3 & Cloud Object Storage Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="s3 screenshot" width="800">
+</p>
 Pure PHP, zero-dependency Amazon S3, DigitalOcean Spaces, Cloudflare R2, and MinIO storage driver for the Bongo Framework.
 
 Uses pure PHP AWS Signature Version 4 (SigV4) authentication. No Composer, AWS SDK, or Node.js runtime required.

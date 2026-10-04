@@ -72,7 +72,7 @@ class ZipReader
             }
 
             // Path traversal defense (Zip Slip protection)
-            if (str_contains($name, '../') || str_contains($name, '..\\') || str_starts_with($name, '/') || str_starts_with($name, '\\')) {
+            if (str_contains($name, '..') || str_starts_with($name, '/') || str_starts_with($name, '\\') || str_contains($name, "\0")) {
                 throw new ZipException("Path traversal attempt detected in ZIP entry: {$name}");
             }
 
@@ -86,6 +86,11 @@ class ZipReader
                 $dir = dirname($targetPath);
                 if (!is_dir($dir)) {
                     mkdir($dir, 0755, true);
+                }
+
+                $realTargetDir = realpath($dir);
+                if ($realTargetDir !== false && !str_starts_with($realTargetDir, $realDest)) {
+                    throw new ZipException("Path traversal attempt detected in ZIP entry: {$name}");
                 }
 
                 $stream = $this->zip->getStream($name);

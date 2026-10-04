@@ -92,14 +92,27 @@ class PathSecurity
      */
     public static function isAllowedForUpload(string $filename): bool
     {
+        $filename = basename($filename);
+        if ($filename === '' || str_starts_with($filename, '.')) {
+            return false;
+        }
+
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         if ($ext === '') {
             return false;
         }
 
-        // Dangerous executable extensions always blocked
-        $blocked = ['exe', 'dll', 'so', 'phtml', 'phar'];
+        // Dangerous executable extensions and server scripts always blocked
+        $blocked = [
+            'exe', 'dll', 'so', 'phtml', 'phar', 'cgi', 'pl', 'asp', 'aspx', 'jsp',
+            'sh', 'bash', 'cmd', 'bat', 'com', 'vbs', 'scr', 'msi', 'hta', 'py'
+        ];
         if (in_array($ext, $blocked, true)) {
+            return false;
+        }
+
+        // Multi-extension execution bypass protection (e.g. avatar.php.jpg)
+        if (preg_match('/\.(php|phtml|phar|cgi|pl|asp|aspx|jsp|sh|py)\./i', $filename)) {
             return false;
         }
 

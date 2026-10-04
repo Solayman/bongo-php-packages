@@ -1,5 +1,10 @@
 # Zip Archive & Compression for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="zip screenshot" width="800">
+</p>
 Official zero-dependency Zip archive compression, extraction, and inspection package for Bongo PHP Framework. Create, extract, stream, and inspect `.zip` archives with a fluent API, directory recursion, glob exclusions, and built-in protection against Zip-Slip security vulnerabilities.
 
 ---

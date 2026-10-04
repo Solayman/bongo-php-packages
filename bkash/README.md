@@ -1,5 +1,10 @@
 # bKash Payment Gateway for Bongo
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="bkash screenshot" width="800">
+</p>
 Official zero-dependency bKash Tokenized Checkout (PGW v1.2.0-beta) integration for the Bongo PHP framework.
 
 ## 🚀 3-Step Quick Start

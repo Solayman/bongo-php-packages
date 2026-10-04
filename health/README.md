@@ -1,5 +1,10 @@
 # Bongo Health Check Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="health screenshot" width="800">
+</p>
 A production-ready, zero-dependency application health check and uptime monitoring suite for Bongo MVC. Built for DevOps probes, uptime monitors (BetterUptime, Pingdom, UptimeRobot), load balancers, and Kubernetes liveness/readiness probes.
 
 ---
