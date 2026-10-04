@@ -9,12 +9,34 @@ use Bongo\Packages\Sms\Drivers\LogDriver;
 use Bongo\Packages\Sms\Drivers\SSLWirelessDriver;
 use Bongo\Packages\Sms\OTP;
 use Bongo\Packages\Sms\SMS;
+use System\Database\Schema\Blueprint;
+use System\Database\Schema\Schema;
 use System\Testing\TestCase;
 
 class SMSTest extends TestCase
 {
+    public function setUp(): void
+    {
+        if (class_exists(Schema::class)) {
+            Schema::dropIfExists('otp_codes');
+            Schema::create('otp_codes', function (Blueprint $table) {
+                $table->id();
+                $table->string('phone', 30)->index();
+                $table->string('code_hash', 255);
+                $table->string('purpose', 50)->default('login');
+                $table->integer('attempts')->default(0);
+                $table->timestamp('expires_at');
+                $table->timestamp('verified_at')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
     public function tearDown(): void
     {
+        if (class_exists(Schema::class)) {
+            Schema::dropIfExists('otp_codes');
+        }
         LogDriver::clear();
         BulkSMSBDDriver::setMockTransport(null);
         SSLWirelessDriver::setMockTransport(null);
