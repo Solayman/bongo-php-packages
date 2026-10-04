@@ -60,4 +60,42 @@ function bongoFileManager(options) {
 
     return { open: openManager };
 }
+
+/**
+ * Bongo File Manager Integration Helper for TinyMCE 5, 6, and 7
+ *
+ * Example:
+ *   tinymce.init({
+ *       selector: 'textarea#editor',
+ *       plugins: 'image link media code',
+ *       toolbar: 'undo redo | bold italic | link image media | code',
+ *       file_picker_callback: bongoTinyMCEPicker()
+ *   });
+ */
+function bongoTinyMCEPicker(options) {
+    const opts = Object.assign({
+        prefix: '/filemanager',
+        width: 1100,
+        height: 700
+    }, options || {});
+
+    return function (callback, value, meta) {
+        const type = meta.filetype === 'image' ? 'image' : (meta.filetype === 'media' ? 'all' : 'all');
+        const width = opts.width;
+        const height = opts.height;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        const url = `${opts.prefix}?type=${encodeURIComponent(type)}&callback=1`;
+
+        window.bongoFileManagerCallback = function (item) {
+            callback(item.url, {
+                text: item.name,
+                alt: item.name,
+                title: item.name
+            });
+        };
+
+        window.open(url, 'BongoFileManager', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`);
+    };
+}
 </script>

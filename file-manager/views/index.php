@@ -1423,12 +1423,12 @@
             openItem(item) {
                 if (item.is_dir) {
                     this.navigateTo(item.path);
+                } else if (this.callback) {
+                    this.confirmSelection();
                 } else if (item.type === 'image') {
                     this.openImageLightbox(item);
                 } else if (item.type === 'code') {
                     this.openCodeEditor(item);
-                } else if (this.callback) {
-                    this.confirmSelection();
                 }
             },
 
@@ -1750,14 +1750,54 @@
                     return;
                 }
 
-                if (window.opener && window.opener.bongoFileManagerCallback) {
-                    window.opener.bongoFileManagerCallback(this.selectedItem);
-                    window.close();
-                } else if (window.parent && window.parent.bongoFileManagerCallback) {
-                    window.parent.bongoFileManagerCallback(this.selectedItem);
-                } else {
-                    this.showToast('Selected file: ' + this.selectedItem.url, 'success');
+                const item = this.selectedItem;
+
+                // 1. TinyMCE 5, 6, and 7 iframe postMessage protocol (windowManager.openUrl)
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ mceAction: 'custom', content: item.url, item: item }, '*');
+                    window.parent.postMessage({ mceAction: 'FileSelected', content: item.url, item: item }, '*');
                 }
+                if (window.opener && window.opener !== window) {
+                    try {
+                        window.opener.postMessage({ mceAction: 'custom', content: item.url, item: item }, '*');
+                        window.opener.postMessage({ mceAction: 'FileSelected', content: item.url, item: item }, '*');
+                    } catch (e) {}
+                }
+
+                // 2. CKEditor 4 support (?CKEditorFuncNum=...)
+                const urlParams = new URLSearchParams(window.location.search);
+                const funcNum = urlParams.get('CKEditorFuncNum');
+                if (funcNum && window.opener && window.opener.CKEDITOR) {
+                    window.opener.CKEDITOR.tools.callFunction(funcNum, item.url);
+                    window.close();
+                    return;
+                }
+
+                // 3. TinyMCE 4 windowManager
+                if (window.parent && window.parent.tinymce && window.parent.tinymce.activeEditor) {
+                    const wm = window.parent.tinymce.activeEditor.windowManager;
+                    if (wm && typeof wm.getParams === 'function') {
+                        const params = wm.getParams();
+                        if (params && typeof params.oninsert === 'function') {
+                            params.oninsert(item.url, item);
+                            if (typeof wm.close === 'function') wm.close();
+                            return;
+                        }
+                    }
+                }
+
+                // 4. Standard Bongo File Manager callback (window.opener or window.parent)
+                if (window.opener && typeof window.opener.bongoFileManagerCallback === 'function') {
+                    window.opener.bongoFileManagerCallback(item);
+                    window.close();
+                    return;
+                }
+                if (window.parent && typeof window.parent.bongoFileManagerCallback === 'function' && window.parent !== window) {
+                    window.parent.bongoFileManagerCallback(item);
+                    return;
+                }
+
+                this.showToast('Selected file: ' + item.url, 'success');
             },
 
             showToast(message, type = 'success') {
