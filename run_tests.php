@@ -28,12 +28,13 @@ $exitCode = 0;
 
 if ($target === 'all') {
     $dirs = array_filter(glob(__DIR__ . '/*'), 'is_dir');
+    $php = PHP_BINARY;
+    $script = __FILE__;
     foreach ($dirs as $pkgDir) {
         $pkgName = basename($pkgDir);
         $testsDir = $pkgDir . '/tests';
         if (is_dir($testsDir)) {
-            echo "\n=== Testing package: $pkgName ===\n";
-            $res = System\Testing\Runner::run($testsDir);
+            passthru(escapeshellcmd($php) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($pkgName), $res);
             if ($res !== 0) {
                 $exitCode = $res;
             }

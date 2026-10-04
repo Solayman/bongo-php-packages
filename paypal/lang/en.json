@@ -1,0 +1,12 @@
+{
+  "paypal_checkout": "Pay with PayPal",
+  "payment_success": "Payment Completed Successfully",
+  "payment_success_desc": "Thank you! Your payment has been confirmed by PayPal.",
+  "payment_cancelled": "Payment Cancelled",
+  "payment_cancelled_desc": "Your payment session was cancelled. No money was charged.",
+  "order_id": "Order ID",
+  "capture_id": "Capture ID",
+  "amount_paid": "Amount Paid",
+  "return_to_store": "Return to Store",
+  "try_again": "Try Again"
+}

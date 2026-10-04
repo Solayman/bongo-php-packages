@@ -170,6 +170,19 @@
           }
         }
       }
+    },
+    "paypal": {
+      "name": "paypal",
+      "latest": "1.0.0",
+      "description": "PayPal REST API v2 Checkout, payment capture, refunds, and verified webhooks",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
