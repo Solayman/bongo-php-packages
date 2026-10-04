@@ -144,6 +144,19 @@
           }
         }
       }
+    },
+    "zip": {
+      "name": "zip",
+      "latest": "1.0.0",
+      "description": "Pure-PHP ZIP compression, extraction, streaming download, and Zip-Slip protection",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
