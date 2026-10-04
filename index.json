@@ -222,6 +222,19 @@
           }
         }
       }
+    },
+    "activity-log": {
+      "name": "activity-log",
+      "latest": "1.0.0",
+      "description": "Audit trail and model activity logger with old vs new diff tracking, client telemetry, and retention pruning",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
