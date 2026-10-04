@@ -168,9 +168,9 @@ class SSLCommerz
         }
 
         // Dispatch Bongo framework events if available
-        if (class_exists('System\\Event\\Event')) {
+        if (class_exists('System\\Events\\Event')) {
             $event = $isValid ? 'payment.success' : 'payment.failed';
-            \System\Event\Event::dispatch($event, $result);
+            \System\Events\Event::dispatch($event, $result);
         }
 
         return $result;

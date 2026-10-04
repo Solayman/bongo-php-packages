@@ -5,7 +5,7 @@ namespace Bongo\Packages\Bkash;
 use InvalidArgumentException;
 use RuntimeException;
 use System\Database\DB;
-use System\Event\Event;
+use System\Events\Event;
 use Throwable;
 
 /**
@@ -174,7 +174,9 @@ class BKash
 
         if ($status === 'cancel') {
             $this->updateTransactionStatus($paymentId, 'CANCELLED', null, $params);
-            Event::emit('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'cancelled']);
+            if (class_exists(Event::class)) {
+                Event::dispatch('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'cancelled']);
+            }
             return [
                 'valid'      => false,
                 'status'     => 'CANCELLED',
@@ -187,7 +189,9 @@ class BKash
 
         if ($status === 'failure') {
             $this->updateTransactionStatus($paymentId, 'FAILED', null, $params);
-            Event::emit('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'failure']);
+            if (class_exists(Event::class)) {
+                Event::dispatch('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'failure']);
+            }
             return [
                 'valid'      => false,
                 'status'     => 'FAILED',
@@ -237,7 +241,9 @@ class BKash
                 'customer_msisdn' => (string) ($response['customerMsisdn'] ?? ''),
                 'raw'             => $response,
             ];
-            Event::emit('payment.success', $eventPayload);
+            if (class_exists(Event::class)) {
+                Event::dispatch('payment.success', $eventPayload);
+            }
 
             return [
                 'valid'      => true,
@@ -250,12 +256,14 @@ class BKash
         }
 
         $this->updateTransactionStatus($paymentId, 'FAILED', $trxId, $response);
-        Event::emit('payment.failed', [
-            'gateway'    => 'bkash',
-            'payment_id' => $paymentId,
-            'reason'     => $response['statusMessage'] ?? 'Execution failed',
-            'raw'        => $response,
-        ]);
+        if (class_exists(Event::class)) {
+            Event::dispatch('payment.failed', [
+                'gateway'    => 'bkash',
+                'payment_id' => $paymentId,
+                'reason'     => $response['statusMessage'] ?? 'Execution failed',
+                'raw'        => $response,
+            ]);
+        }
 
         return [
             'valid'      => false,
