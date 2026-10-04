@@ -131,6 +131,19 @@
           }
         }
       }
+    },
+    "permission": {
+      "name": "permission",
+      "latest": "1.0.0",
+      "description": "Role-Based Access Control (RBAC) and permissions management with middleware and CLI tools",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
