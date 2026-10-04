@@ -66,6 +66,19 @@
           }
         }
       }
+    },
+    "nagad": {
+      "name": "nagad",
+      "latest": "1.0.0",
+      "description": "Nagad payment gateway for Bangladesh",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

@@ -1,0 +1,19 @@
+{
+  "Pay with Nagad": "নগদ দিয়ে পরিশোধ করুন",
+  "You will be redirected securely to the Nagad payment gateway to enter your Nagad account number and complete verification.": "আপনার নগদ একাউন্ট নম্বর প্রবেশ ও যাচাইকরণ সম্পন্ন করার জন্য আপনাকে নিরাপদে নগদ পেমেন্ট গেটওয়েতে পাঠানো হবে।",
+  "Proceed to Nagad Payment": "নগদ পেমেন্টে এগিয়ে যান",
+  "Payment Successful": "পেমেন্ট সফল হয়েছে",
+  "Thank you! Your Nagad payment has been verified successfully.": "ধন্যবাদ! আপনার নগদ পেমেন্ট সফলভাবে যাচাই করা হয়েছে।",
+  "Nagad Transaction ID": "নগদ ট্রানজেকশন আইডি",
+  "Payment Reference ID": "পেমেন্ট রেফারেন্স আইডি",
+  "Order ID": "অর্ডার আইডি",
+  "Amount Paid": "পরিশোধিত অর্থ",
+  "Account Number": "একাউন্ট নম্বর",
+  "Return to Store": "দোকানে ফিরে যান",
+  "Payment Failed": "পেমেন্ট ব্যর্থ হয়েছে",
+  "We could not verify your Nagad payment. Please try again or use another payment method.": "আমরা আপনার নগদ পেমেন্ট যাচাই করতে পারিনি। অনুগ্রহ করে আবার চেষ্টা করুন বা অন্য পেমেন্ট পদ্ধতি ব্যবহার করুন।",
+  "Try Again": "আবার চেষ্টা করুন",
+  "Payment Cancelled": "পেমেন্ট বাতিল করা হয়েছে",
+  "You cancelled the Nagad payment process. No money was deducted from your Nagad wallet.": "আপনি নগদ পেমেন্ট প্রক্রিয়া বাতিল করেছেন। আপনার নগদ ওয়ালেট থেকে কোনো টাকা কাটা হয়নি।",
+  "Resume Checkout": "চেকআউটে ফিরে যান"
+}
