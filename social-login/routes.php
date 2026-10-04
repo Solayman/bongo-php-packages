@@ -1,7 +1,7 @@
 <?php
 
 use Bongo\Packages\SocialLogin\Controllers\OAuthController;
+use System\Routing\Route;
 
-/** @var \System\Routing\Router $router */
-$router->get('/auth/{provider}', [OAuthController::class, 'redirect'], 'social.redirect');
-$router->get('/auth/{provider}/callback', [OAuthController::class, 'callback'], 'social.callback');
+Route::get('/auth/{provider}', [OAuthController::class, 'redirect'])->name('social.redirect');
+Route::get('/auth/{provider}/callback', [OAuthController::class, 'callback'])->name('social.callback');
