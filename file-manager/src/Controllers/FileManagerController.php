@@ -246,4 +246,35 @@ class FileManagerController
             'message' => $ok ? 'File saved successfully.' : 'Failed to save file.',
         ];
     }
+
+    /**
+     * Download a file from storage.
+     */
+    public function download(Request $request): void
+    {
+        $path = (string) ($request->query('path') ?? '');
+        $cleanPath = PathSecurity::sanitize($path);
+        $fullPath = FileManager::service()->resolveFullPath($cleanPath);
+
+        if (!is_file($fullPath)) {
+            if (!headers_sent()) {
+                http_response_code(404);
+            }
+            echo "File not found.";
+            return;
+        }
+
+        $filename = basename($fullPath);
+        $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+        $size = (int) filesize($fullPath);
+
+        if (!headers_sent()) {
+            header('Content-Type: ' . $mime);
+            header('Content-Disposition: attachment; filename="' . addslashes($filename) . '"');
+            header('Content-Length: ' . $size);
+        }
+
+        readfile($fullPath);
+        exit;
+    }
 }
