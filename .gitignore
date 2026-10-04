@@ -1,0 +1,9 @@
+.env
+*.log
+*.zip
+*.tar.gz
+*.tgz
+.DS_Store
+Thumbs.db
+storage/
+vendor/
