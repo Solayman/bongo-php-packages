@@ -183,6 +183,19 @@
           }
         }
       }
+    },
+    "api-tools": {
+      "name": "api-tools",
+      "latest": "1.0.0",
+      "description": "API Resources (JSON transformers), OpenAPI 3.0 (Swagger UI & Redoc), API rate limiter, and ApiResponse",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
