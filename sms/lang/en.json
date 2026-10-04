@@ -1,0 +1,16 @@
+{
+  "Sign in with Phone": "Sign in with Phone",
+  "Enter your mobile number and we will send you a verification code.": "Enter your mobile number and we will send you a verification code.",
+  "Mobile Number": "Mobile Number",
+  "Send Verification Code": "Send Verification Code",
+  "Verify Code": "Verify Code",
+  "Enter the 6-digit code sent to": "Enter the 6-digit code sent to",
+  "Change": "Change",
+  "Verify & Sign in": "Verify & Sign in",
+  "Didn't receive the code?": "Didn't receive the code?",
+  "Resend Code": "Resend Code",
+  "Please enter a valid 11-digit Bangladeshi mobile number.": "Please enter a valid 11-digit Bangladeshi mobile number.",
+  "Phone number and verification code are required.": "Phone number and verification code are required.",
+  "Invalid or expired verification code.": "Invalid or expired verification code.",
+  "Your verification code is: :code. Valid for :minutes minutes.": "Your verification code is: :code. Valid for :minutes minutes."
+}

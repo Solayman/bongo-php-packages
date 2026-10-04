@@ -1,0 +1,16 @@
+{
+  "Sign in with Phone": "ফোন নম্বর দিয়ে সাইন ইন",
+  "Enter your mobile number and we will send you a verification code.": "আপনার মোবাইল নম্বরটি দিন, আমরা একটি ভেরিফিকেশন কোড পাঠাবো।",
+  "Mobile Number": "মোবাইল নম্বর",
+  "Send Verification Code": "ভেরিফিকেশন কোড পাঠান",
+  "Verify Code": "কোড যাচাই করুন",
+  "Enter the 6-digit code sent to": "এই নম্বরে পাঠানো ৬-সংখ্যার কোডটি লিখুন:",
+  "Change": "পরিবর্তন",
+  "Verify & Sign in": "যাচাই করে সাইন ইন করুন",
+  "Didn't receive the code?": "কোড পাননি?",
+  "Resend Code": "আবার কোড পাঠান",
+  "Please enter a valid 11-digit Bangladeshi mobile number.": "অনুগ্রহ করে সঠিক ১১-সংখ্যার বাংলাদেশী মোবাইল নম্বর লিখুন।",
+  "Phone number and verification code are required.": "মোবাইল নম্বর এবং ভেরিফিকেশন কোড উভয়ই আবশ্যক।",
+  "Invalid or expired verification code.": "ভেরিফিকেশন কোডটি সঠিক নয় অথবা মেয়াদ শেষ হয়ে গেছে।",
+  "Your verification code is: :code. Valid for :minutes minutes.": "আপনার ভেরিফিকেশন কোড: :code। মেয়াদ :minutes মিনিট।"
+}
