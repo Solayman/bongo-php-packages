@@ -1,5 +1,10 @@
 # Bongo Settings Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="settings screenshot" width="800">
+</p>
 A zero-dependency, type-safe application and store settings manager for Bongo MVC. Stores dynamic configuration in the database with in-memory & persistent caching, type casting (boolean, integer, float, json, string), console CLI commands, and a Blade template directive.
 
 ---

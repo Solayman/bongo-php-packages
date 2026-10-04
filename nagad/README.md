@@ -1,5 +1,10 @@
 # Nagad Payment Gateway for Bongo
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="nagad screenshot" width="800">
+</p>
 Official zero-dependency Nagad Payment Gateway (PGW v-0.2) integration for the Bongo PHP framework.
 
 ## 🚀 3-Step Quick Start

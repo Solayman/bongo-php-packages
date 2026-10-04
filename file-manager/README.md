@@ -1,5 +1,10 @@
 # Bongo File Manager & Code Editor Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="file-manager screenshot" width="800">
+</p>
 A zero-dependency, full-featured web file manager and professional in-browser code editor for Bongo MVC, inspired by `unisharp/laravel-filemanager` but built natively with zero server dependencies and first-class code editing support.
 
 ---

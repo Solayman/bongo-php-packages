@@ -1,5 +1,10 @@
 # Image Processing & Optimization for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="image screenshot" width="800">
+</p>
 Official zero-dependency image manipulation, resizing, smart cropping, watermarking, and WebP optimization package for Bongo PHP Framework. Powered entirely by PHP's built-in `ext-gd` extension with zero third-party Composer packages.
 
 ---

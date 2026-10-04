@@ -1,5 +1,10 @@
 # Stripe Package for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="stripe screenshot" width="800">
+</p>
 Official zero-dependency Stripe payment gateway package for Bongo PHP Framework. Enables global credit/debit card processing, Apple Pay, Google Pay, Stripe Checkout, Payment Intents, refunds, and cryptographically verified webhooks via pure PHP without external Composer libraries.
 
 ---

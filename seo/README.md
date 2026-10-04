@@ -1,5 +1,10 @@
 # Bongo SEO Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="seo screenshot" width="800">
+</p>
 A comprehensive, zero-dependency Search Engine Optimization (SEO), OpenGraph, Twitter Cards, Schema.org JSON-LD, and dynamic XML Sitemap suite for Bongo MVC.
 
 ---

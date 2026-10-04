@@ -87,8 +87,11 @@ class ActivityLogger
         if ($ip !== null && str_contains($ip, ',')) {
             $ip = trim(explode(',', $ip)[0]);
         }
+        if ($ip !== null) {
+            $ip = substr($ip, 0, 45);
+        }
 
-        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
 
         $props = !empty($this->properties) ? json_encode($this->properties, JSON_UNESCAPED_UNICODE) : null;
 

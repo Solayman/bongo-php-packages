@@ -1,5 +1,10 @@
 # API Tools Package for Bongo PHP Framework
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="api-tools screenshot" width="800">
+</p>
 Official zero-dependency API development suite for Bongo PHP Framework. Includes Eloquent-style `JsonResource` transformers, paginated `ResourceCollection`, standardized `ApiResponse` formatting, interactive OpenAPI 3.0 (Swagger UI & Redoc) documentation generator, and API rate limiting middleware.
 
 ---

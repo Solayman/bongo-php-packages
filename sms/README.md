@@ -1,5 +1,10 @@
 # Bongo SMS & OTP Authentication
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="sms screenshot" width="800">
+</p>
 Official zero-dependency SMS gateway and phone OTP authentication package for the Bongo PHP framework.
 
 Supports popular Bangladeshi SMS gateways (BulkSMSBD, SSL Wireless, Alpha SMS) and local `log` driver with a clean, extensible driver architecture.

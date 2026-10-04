@@ -1,5 +1,10 @@
 # Bongo Activity Log Package
 
+
+
+<p align="center">
+  <img src="docs/screenshot.svg" alt="activity-log screenshot" width="800">
+</p>
 An enterprise-ready, zero-dependency audit trail and activity logging package for Bongo MVC. Seamlessly tracks user actions, model lifecycle changes (with old vs new attribute diffs), client IP addresses, User-Agents, and automated pruning.
 
 ---
