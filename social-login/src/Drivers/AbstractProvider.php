@@ -15,7 +15,7 @@ abstract class AbstractProvider implements ProviderInterface
     protected array $scopes = [];
     protected bool $stateless = false;
 
-    public function __construct(array $config)
+    public function __construct(array $config = [])
     {
         $this->clientId     = (string) ($config['client_id'] ?? '');
         $this->clientSecret = (string) ($config['client_secret'] ?? '');
@@ -102,7 +102,8 @@ abstract class AbstractProvider implements ProviderInterface
     {
         $expected = null;
         if (class_exists(Session::class)) {
-            $expected = Session::pull('oauth_state_' . $this->name());
+            $expected = Session::get('oauth_state_' . $this->name());
+            Session::forget('oauth_state_' . $this->name());
         } elseif (isset($_SESSION['oauth_state_' . $this->name()])) {
             $expected = $_SESSION['oauth_state_' . $this->name()];
             unset($_SESSION['oauth_state_' . $this->name()]);
