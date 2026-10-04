@@ -1,0 +1,17 @@
+{
+  "Two-Factor Authentication": "দ্বি-স্তর বিশিষ্ট নিরাপত্তা (২এফএ)",
+  "Enable Two-Factor Authentication": "দ্বি-স্তর বিশিষ্ট নিরাপত্তা চালু করুন",
+  "Scan this QR code with your authenticator app (Google Authenticator, Authy, or 1Password).": "আপনার প্রমাণীকরণ অ্যাপ (Google Authenticator, Authy, বা 1Password) দিয়ে এই QR কোডটি স্ক্যান করুন।",
+  "Or enter this code manually": "অথবা এই গোপন কোডটি ম্যানুয়ালি প্রবেশ করান",
+  "Enter 6-digit code": "৬-সংখ্যার কোডটি লিখুন",
+  "Confirm and Activate": "নিশ্চিত করুন এবং সক্রিয় করুন",
+  "Two-factor authentication has been activated.": "দ্বি-স্তর বিশিষ্ট নিরাপত্তা সফলভাবে সক্রিয় করা হয়েছে।",
+  "Invalid authentication code. Please try again.": "ভুল প্রমাণীকরণ কোড। অনুগ্রহ করে পুনরায় চেষ্টা করুন।",
+  "Recovery Codes": "রিকভারি ব্যাকআপ কোডসমূহ",
+  "Store these recovery codes in a safe place. Each code can only be used once.": "এই রিকভারি কোডগুলি একটি নিরাপদ স্থানে সংরক্ষণ করুন। প্রতিটি কোড শুধুমাত্র একবার ব্যবহার করা যাবে।",
+  "Use a recovery code": "রিকভারি কোড ব্যবহার করুন",
+  "Use an authentication code": "প্রমাণীকরণ কোড ব্যবহার করুন",
+  "Enter recovery code": "রিকভারি কোডটি লিখুন",
+  "Verify": "যাচাই করুন",
+  "Disable Two-Factor Authentication": "দ্বি-স্তর বিশিষ্ট নিরাপত্তা নিষ্ক্রিয় করুন"
+}

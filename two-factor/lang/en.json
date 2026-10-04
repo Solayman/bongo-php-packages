@@ -1,0 +1,17 @@
+{
+  "Two-Factor Authentication": "Two-Factor Authentication",
+  "Enable Two-Factor Authentication": "Enable Two-Factor Authentication",
+  "Scan this QR code with your authenticator app (Google Authenticator, Authy, or 1Password).": "Scan this QR code with your authenticator app (Google Authenticator, Authy, or 1Password).",
+  "Or enter this code manually": "Or enter this code manually",
+  "Enter 6-digit code": "Enter 6-digit code",
+  "Confirm and Activate": "Confirm and Activate",
+  "Two-factor authentication has been activated.": "Two-factor authentication has been activated.",
+  "Invalid authentication code. Please try again.": "Invalid authentication code. Please try again.",
+  "Recovery Codes": "Recovery Codes",
+  "Store these recovery codes in a safe place. Each code can only be used once.": "Store these recovery codes in a safe place. Each code can only be used once.",
+  "Use a recovery code": "Use a recovery code",
+  "Use an authentication code": "Use an authentication code",
+  "Enter recovery code": "Enter recovery code",
+  "Verify": "Verify",
+  "Disable Two-Factor Authentication": "Disable Two-Factor Authentication"
+}
