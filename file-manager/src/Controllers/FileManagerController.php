@@ -275,6 +275,133 @@ class FileManagerController
         }
 
         readfile($fullPath);
-        exit;
+        if (!class_exists('System\\Testing\\TestCase', false)) {
+            exit;
+        }
+    }
+
+    /**
+     * Generate and serve a high-quality cached thumbnail.
+     */
+    public function thumbnail(Request $request): void
+    {
+        $path = (string) ($request->query('path') ?? '');
+        $cleanPath = PathSecurity::sanitize($path);
+        $fullPath = FileManager::service()->resolveFullPath($cleanPath);
+
+        if (!is_file($fullPath) || !PathSecurity::isImage($fullPath)) {
+            if (!headers_sent()) {
+                http_response_code(404);
+            }
+            echo "Image not found.";
+            return;
+        }
+
+        $width = (int) ($request->query('w', 200));
+        $height = (int) ($request->query('h', 200));
+        if ($width <= 0 || $width > 800) $width = 200;
+        if ($height <= 0 || $height > 800) $height = 200;
+
+        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        if ($ext === 'svg' || !extension_loaded('gd')) {
+            $this->streamFile($fullPath);
+            return;
+        }
+
+        $mtime = filemtime($fullPath) ?: 0;
+        $hash = md5($cleanPath . '_' . $mtime . "_{$width}x{$height}");
+        $cacheDir = function_exists('storage_path')
+            ? storage_path('cache/filemanager_thumbs')
+            : sys_get_temp_dir() . '/filemanager_thumbs';
+
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+
+        $cacheFile = $cacheDir . '/' . $hash . '.webp';
+        if (file_exists($cacheFile)) {
+            $this->streamFile($cacheFile, 'image/webp');
+            return;
+        }
+
+        $imgInfo = @getimagesize($fullPath);
+        if (!$imgInfo) {
+            $this->streamFile($fullPath);
+            return;
+        }
+
+        $srcW = $imgInfo[0];
+        $srcH = $imgInfo[1];
+        $mime = $imgInfo['mime'];
+
+        $srcImg = match ($mime) {
+            'image/jpeg' => @imagecreatefromjpeg($fullPath),
+            'image/png'  => @imagecreatefrompng($fullPath),
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($fullPath) : null,
+            'image/gif'  => @imagecreatefromgif($fullPath),
+            default      => null,
+        };
+
+        if (!$srcImg) {
+            $this->streamFile($fullPath);
+            return;
+        }
+
+        $ratio = min($width / $srcW, $height / $srcH);
+        $dstW = (int) max(1, round($srcW * $ratio));
+        $dstH = (int) max(1, round($srcH * $ratio));
+
+        $dstImg = imagecreatetruecolor($dstW, $dstH);
+        imagealphablending($dstImg, false);
+        imagesavealpha($dstImg, true);
+        $transparent = imagecolorallocatealpha($dstImg, 255, 255, 255, 127);
+        imagefilledrectangle($dstImg, 0, 0, $dstW, $dstH, $transparent);
+
+        imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $dstW, $dstH, $srcW, $srcH);
+
+        if (function_exists('imagewebp')) {
+            imagewebp($dstImg, $cacheFile, 88);
+            $outMime = 'image/webp';
+        } else {
+            imagejpeg($dstImg, $cacheFile, 85);
+            $outMime = 'image/jpeg';
+        }
+
+        imagedestroy($srcImg);
+        imagedestroy($dstImg);
+
+        $this->streamFile($cacheFile, $outMime);
+    }
+
+    protected function streamFile(string $filePath, ?string $mime = null): void
+    {
+        if (!is_file($filePath)) {
+            if (!headers_sent()) {
+                http_response_code(404);
+            }
+            return;
+        }
+
+        $detectedMime = $mime ?? (mime_content_type($filePath) ?: 'application/octet-stream');
+        $size = (int) filesize($filePath);
+        $mtime = filemtime($filePath) ?: time();
+        $etag = '"' . md5($filePath . $mtime . $size) . '"';
+
+        if (!headers_sent()) {
+            header('Content-Type: ' . $detectedMime);
+            header('Content-Length: ' . $size);
+            header('Cache-Control: public, max-age=86400');
+            header('ETag: ' . $etag);
+
+            if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
+                http_response_code(304);
+                return;
+            }
+        }
+
+        readfile($filePath);
+        if (!class_exists('System\\Testing\\TestCase', false)) {
+            exit;
+        }
     }
 }

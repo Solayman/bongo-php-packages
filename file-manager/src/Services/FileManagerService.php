@@ -104,6 +104,9 @@ class FileManagerService
                     ? $this->getStorageDisk()->url($storageRelative)
                     : '/' . $storageRelative;
 
+                $prefix = function_exists('config') ? (string) config('filemanager.route_prefix', 'filemanager') : 'filemanager';
+                $thumbUrl = $type === 'image' ? "/{$prefix}/thumb?path=" . rawurlencode($relativeItemPath) : null;
+
                 $files[] = new FileItem(
                     name: $entry,
                     path: $relativeItemPath,
@@ -111,7 +114,7 @@ class FileManagerService
                     size: $size,
                     type: $type,
                     url: $url,
-                    thumbUrl: $type === 'image' ? $url : null,
+                    thumbUrl: $thumbUrl,
                     extension: $ext,
                     updatedAt: date('Y-m-d H:i:s', filemtime($entryFullPath) ?: time()),
                     editorLanguage: PathSecurity::getEditorLanguage($entry)
@@ -394,6 +397,9 @@ class FileManagerService
             ? $this->getStorageDisk()->url($storageRelative)
             : '/' . $storageRelative;
 
+        $prefix = function_exists('config') ? (string) config('filemanager.route_prefix', 'filemanager') : 'filemanager';
+        $thumbUrl = $type === 'image' ? "/{$prefix}/thumb?path=" . rawurlencode($relPath) : null;
+
         return new FileItem(
             name: $safeName,
             path: $relPath,
@@ -401,7 +407,7 @@ class FileManagerService
             size: (int) filesize($destPath),
             type: $type,
             url: $url,
-            thumbUrl: $type === 'image' ? $url : null,
+            thumbUrl: $thumbUrl,
             extension: $ext,
             updatedAt: date('Y-m-d H:i:s'),
             editorLanguage: PathSecurity::getEditorLanguage($safeName)

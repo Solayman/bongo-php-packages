@@ -181,13 +181,16 @@
             background: #edf2f7;
         }
         .folder-node.active {
-            background: #e2e8f0;
-            color: #0f172a;
+            background: #dfe4ea;
+            color: #1e293b;
             font-weight: 600;
+            border-radius: 0;
+            margin: 0 -8px 2px -8px;
+            padding: 7px 18px;
         }
         .folder-node i.fa-folder, .folder-node i.fa-folder-open {
-            color: var(--accent-blue);
-            font-size: 16px;
+            color: #34495e;
+            font-size: 15px;
         }
         .folder-children {
             list-style: none;
@@ -445,13 +448,13 @@
             cursor: pointer;
         }
         .fab-badge {
-            background: #1e293b;
+            background: #718096;
             color: #ffffff;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 500;
-            padding: 4px 10px;
-            border-radius: 14px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            padding: 3px 8px;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
             white-space: nowrap;
             pointer-events: none;
         }
@@ -678,7 +681,7 @@
         .toast.error { border-left: 4px solid var(--danger); }
 
         /* Responsive Mobile Styles */
-        @media (max-width: 768px) {
+        @media (max-width: 680px) {
             .sidebar-toggle-btn { display: inline-flex; }
             .sidebar {
                 position: absolute;
@@ -690,13 +693,17 @@
                 box-shadow: 2px 0 8px rgba(0,0,0,0.15);
             }
             .sidebar.drawer-open { transform: translateX(0); }
-            .view-text { display: none; }
             .search-container input { width: 90px; }
             .thumbnails-grid {
-                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-                gap: 10px;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 12px !important;
             }
-            .file-card { height: 140px; }
+            .desktop-only-controls { display: none !important; }
+            .mobile-gear-btn { display: inline-flex !important; }
+        }
+        @media (min-width: 681px) {
+            .mobile-gear-btn { display: none !important; }
+            .mobile-menu-drawer { display: none !important; }
         }
     </style>
 </head>
@@ -713,48 +720,55 @@
         </div>
 
         <div class="navbar-controls">
-            <!-- View Mode Toggles (Thumbnails / List) -->
-            <button class="view-btn active" id="btnThumbnails" onclick="app.setViewMode('thumbnails')">
-                <i class="fa-solid fa-table-cells-large"></i>
-                <span class="view-text">Thumbnails</span>
-            </button>
-            <button class="view-btn" id="btnList" onclick="app.setViewMode('list')">
-                <i class="fa-solid fa-list-ul"></i>
-                <span class="view-text">List</span>
-            </button>
-
-            <!-- Sort Dropdown -->
-            <div class="dropdown" id="sortDropdown">
-                <button class="view-btn" onclick="app.toggleSortDropdown()">
-                    <i class="fa-solid fa-arrow-down-short-wide"></i>
-                    <span class="view-text">Sort</span>
-                    <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 2px;"></i>
+            <div class="desktop-only-controls" style="display: flex; align-items: center; gap: 6px;">
+                <!-- View Mode Toggles (Thumbnails / List) -->
+                <button class="view-btn active" id="btnThumbnails" onclick="app.setViewMode('thumbnails')">
+                    <i class="fa-solid fa-table-cells-large"></i>
+                    <span class="view-text">Thumbnails</span>
                 </button>
-                <div class="dropdown-menu">
-                    <div class="dropdown-item active" onclick="app.setSort('name', 'asc')">
-                        <span>Name (A-Z)</span> <i class="fa-solid fa-check sort-check"></i>
-                    </div>
-                    <div class="dropdown-item" onclick="app.setSort('name', 'desc')">
-                        <span>Name (Z-A)</span>
-                    </div>
-                    <div class="dropdown-item" onclick="app.setSort('time', 'desc')">
-                        <span>Date (Newest)</span>
-                    </div>
-                    <div class="dropdown-item" onclick="app.setSort('time', 'asc')">
-                        <span>Date (Oldest)</span>
-                    </div>
-                    <div class="dropdown-item" onclick="app.setSort('size', 'desc')">
-                        <span>Size (Largest)</span>
-                    </div>
-                    <div class="dropdown-item" onclick="app.setSort('type', 'asc')">
-                        <span>File Type</span>
+                <button class="view-btn" id="btnList" onclick="app.setViewMode('list')">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span class="view-text">List</span>
+                </button>
+
+                <!-- Sort Dropdown -->
+                <div class="dropdown" id="sortDropdown">
+                    <button class="view-btn" onclick="app.toggleSortDropdown()">
+                        <i class="fa-solid fa-arrow-down-short-wide"></i>
+                        <span class="view-text">Sort</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 10px; margin-left: 2px;"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-item active" onclick="app.setSort('name', 'asc')">
+                            <span>Name (A-Z)</span> <i class="fa-solid fa-check sort-check"></i>
+                        </div>
+                        <div class="dropdown-item" onclick="app.setSort('name', 'desc')">
+                            <span>Name (Z-A)</span>
+                        </div>
+                        <div class="dropdown-item" onclick="app.setSort('time', 'desc')">
+                            <span>Date (Newest)</span>
+                        </div>
+                        <div class="dropdown-item" onclick="app.setSort('time', 'asc')">
+                            <span>Date (Oldest)</span>
+                        </div>
+                        <div class="dropdown-item" onclick="app.setSort('size', 'desc')">
+                            <span>Size (Largest)</span>
+                        </div>
+                        <div class="dropdown-item" onclick="app.setSort('type', 'asc')">
+                            <span>File Type</span>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Refresh Button -->
+                <button class="view-btn" onclick="app.refresh()" title="Refresh">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
             </div>
 
-            <!-- Refresh Button -->
-            <button class="view-btn" onclick="app.refresh()" title="Refresh">
-                <i class="fa-solid fa-arrows-rotate"></i>
+            <!-- Mobile Gear Menu Button -->
+            <button class="view-btn mobile-gear-btn" onclick="app.toggleMobileDrawer()" title="View & Sort Settings">
+                <i class="fa-solid fa-gear"></i>
             </button>
 
             <?php if (!empty($callback)): ?>
@@ -764,6 +778,21 @@
             <?php endif; ?>
         </div>
     </header>
+
+    <!-- Mobile Drawer for View Modes & Sort -->
+    <div class="mobile-menu-drawer" id="mobileMenuDrawer" style="display: none; background: #242f3e; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.15); z-index: 19;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="view-btn active" id="btnMobileThumbnails" onclick="app.setViewMode('thumbnails')">
+                <i class="fa-solid fa-table-cells-large"></i> Thumbnails
+            </button>
+            <button class="view-btn" id="btnMobileList" onclick="app.setViewMode('list')">
+                <i class="fa-solid fa-list-ul"></i> List
+            </button>
+            <button class="view-btn" onclick="app.toggleSortDropdown()">
+                <i class="fa-solid fa-arrow-down-short-wide"></i> Sort ▾
+            </button>
+        </div>
+    </div>
 
     <!-- Main Workspace -->
     <div class="workspace" id="workspaceContainer">
