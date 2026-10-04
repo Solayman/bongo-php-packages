@@ -1,0 +1,18 @@
+{
+  "Pay with bKash": "বিকাশ দিয়ে পেমেন্ট করুন",
+  "You will be redirected securely to the bKash payment gateway to enter your bKash mobile number and complete verification.": "আপনার বিকাশ নম্বর ও পেমেন্ট যাচাই করতে আপনাকে নিরাপদে বিকাশ পেমেন্ট গেটওয়েতে নিয়ে যাওয়া হবে।",
+  "Proceed to bKash Payment": "বিকাশ পেমেন্টে এগিয়ে যান",
+  "Payment Successful": "পেমেন্ট সফল হয়েছে",
+  "Thank you! Your bKash payment has been verified successfully.": "ধন্যবাদ! আপনার বিকাশ পেমেন্ট সফলভাবে যাচাই করা হয়েছে।",
+  "bKash TrxID": "বিকাশ ট্রানজ্যাকশন আইডি",
+  "Payment ID": "পেমেন্ট আইডি",
+  "Amount Paid": "পরিশোধিত টাকা",
+  "Account Number": "বিকাশ একাউন্ট নম্বর",
+  "Return to Store": "দোকানে ফিরে যান",
+  "Payment Failed": "পেমেন্ট ব্যর্থ হয়েছে",
+  "We could not verify your bKash payment. Please try again or use another payment method.": "আমরা আপনার বিকাশ পেমেন্ট যাচাই করতে পারিনি। অনুগ্রহ করে আবার চেষ্টা করুন অথবা অন্য পেমেন্ট মাধ্যম ব্যবহার করুন।",
+  "Try Again": "আবার চেষ্টা করুন",
+  "Payment Cancelled": "পেমেন্ট বাতিল করা হয়েছে",
+  "You cancelled the bKash payment process. No money was deducted from your bKash wallet.": "আপনি বিকাশ পেমেন্ট প্রক্রিয়াটি বাতিল করেছেন। আপনার বিকাশ অ্যাকাউন্ট থেকে কোনো টাকা কাটা হয়নি।",
+  "Resume Checkout": "চেকআউটে ফিরে যান"
+}
