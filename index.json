@@ -27,6 +27,19 @@
           }
         }
       }
+    },
+    "sms": {
+      "name": "sms",
+      "latest": "1.0.0",
+      "description": "SMS gateways (BulkSMSBD, SSL Wireless, Alpha SMS) and phone OTP login",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
