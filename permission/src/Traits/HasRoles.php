@@ -7,9 +7,14 @@ namespace Bongo\Packages\Permission\Traits;
 use Bongo\Packages\Permission\Models\PermissionModel;
 use Bongo\Packages\Permission\Models\Role;
 use System\Database\BelongsToMany;
+use System\Database\DB;
 
 trait HasRoles
 {
+    use HasPermissions;
+
+    protected ?array $rolePermissionsCache = null;
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -30,49 +35,94 @@ trait HasRoles
         );
     }
 
-    public function assignRole(string|Role|array $roles): static
+    /**
+     * Resolve roles list to array of Role model instances in a single batched query.
+     * Prevents N+1 queries when assigning or syncing multiple roles.
+     *
+     * @param array<string|Role> $roles
+     * @return array<Role>
+     */
+    protected function resolveRoleModels(array $roles, string $guard = 'web'): array
     {
-        $roles = is_array($roles) ? $roles : [$roles];
+        $models = [];
+        $stringNames = [];
 
         foreach ($roles as $role) {
-            $roleModel = is_string($role) ? Role::findOrCreate($role) : $role;
-            if ($roleModel) {
-                $this->roles()->attach($roleModel->id);
+            if ($role instanceof Role) {
+                $models[] = $role;
+            } elseif (is_string($role) && trim($role) !== '') {
+                $stringNames[] = trim($role);
             }
         }
 
+        if (!empty($stringNames)) {
+            $stringNames = array_values(array_unique($stringNames));
+            $existing = Role::where('guard_name', $guard)
+                ->whereIn('name', $stringNames)
+                ->get();
+
+            $existingMap = [];
+            foreach ($existing as $model) {
+                $existingMap[$model->name] = $model;
+            }
+
+            foreach ($stringNames as $name) {
+                if (isset($existingMap[$name])) {
+                    $models[] = $existingMap[$name];
+                } else {
+                    $models[] = Role::create([
+                        'name' => $name,
+                        'guard_name' => $guard,
+                    ]);
+                }
+            }
+        }
+
+        return $models;
+    }
+
+    public function assignRole(string|Role|array $roles): static
+    {
+        $roles = is_array($roles) ? $roles : [$roles];
+        $guard = $this->guard_name ?? 'web';
+        $models = $this->resolveRoleModels($roles, $guard);
+
+        foreach ($models as $roleModel) {
+            $this->roles()->attach($roleModel->id);
+        }
+
         $this->relations = [];
+        $this->rolePermissionsCache = null;
         return $this;
     }
 
     public function removeRole(string|Role|array $roles): static
     {
         $roles = is_array($roles) ? $roles : [$roles];
+        $guard = $this->guard_name ?? 'web';
 
         foreach ($roles as $role) {
             $name = is_string($role) ? $role : $role->name;
-            $roleModel = Role::findByName($name);
+            $roleModel = Role::findByName($name, $guard);
             if ($roleModel) {
                 $this->roles()->detach($roleModel->id);
             }
         }
 
         $this->relations = [];
+        $this->rolePermissionsCache = null;
         return $this;
     }
 
     public function syncRoles(array $roles): static
     {
-        $ids = [];
-        foreach ($roles as $role) {
-            $roleModel = is_string($role) ? Role::findOrCreate($role) : $role;
-            if ($roleModel) {
-                $ids[] = $roleModel->id;
-            }
-        }
+        $guard = $this->guard_name ?? 'web';
+        $models = $this->resolveRoleModels($roles, $guard);
+        $ids = array_map(fn($m) => $m->id, $models);
 
         $this->roles()->sync($ids);
         $this->relations = [];
+        $this->rolePermissionsCache = null;
         return $this;
     }
 
@@ -118,82 +168,52 @@ trait HasRoles
         return array_map(fn($r) => $r->name, $roles);
     }
 
-    public function givePermissionTo(string|PermissionModel|array $permissions): static
+    /**
+     * Get all permission names granted to this model via its assigned roles.
+     * Batches role ID lookups into a single O(1) query, completely preventing N+1 queries.
+     *
+     * @return array<string>
+     */
+    public function getRolePermissions(): array
     {
-        $permissions = is_array($permissions) ? $permissions : [$permissions];
+        if ($this->rolePermissionsCache !== null) {
+            return $this->rolePermissionsCache;
+        }
 
-        foreach ($permissions as $perm) {
-            $permModel = is_string($perm) ? PermissionModel::findOrCreate($perm) : $perm;
-            if ($permModel) {
-                $this->permissions()->attach($permModel->id);
+        $roles = $this->roles;
+        if (!is_array($roles) || empty($roles)) {
+            return $this->rolePermissionsCache = [];
+        }
+
+        $roleIds = array_values(array_filter(array_map(fn($r) => $r->id ?? null, $roles)));
+        if (empty($roleIds)) {
+            return $this->rolePermissionsCache = [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+        $rows = DB::raw(
+            "SELECT DISTINCT p.name FROM permissions p " .
+            "INNER JOIN role_has_permissions rhp ON rhp.permission_id = p.id " .
+            "WHERE rhp.role_id IN ({$placeholders})",
+            $roleIds
+        );
+
+        $names = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $name = is_array($row) ? ($row['name'] ?? null) : ($row->name ?? null);
+                if ($name !== null) {
+                    $names[(string) $name] = (string) $name;
+                }
             }
         }
 
-        $this->relations = [];
-        return $this;
-    }
-
-    public function revokePermissionTo(string|PermissionModel|array $permissions): static
-    {
-        $permissions = is_array($permissions) ? $permissions : [$permissions];
-
-        foreach ($permissions as $perm) {
-            $name = is_string($perm) ? $perm : $perm->name;
-            $permModel = PermissionModel::findByName($name);
-            if ($permModel) {
-                $this->permissions()->detach($permModel->id);
-            }
-        }
-
-        $this->relations = [];
-        return $this;
-    }
-
-    public function syncPermissions(array $permissions): static
-    {
-        $ids = [];
-        foreach ($permissions as $perm) {
-            $permModel = is_string($perm) ? PermissionModel::findOrCreate($perm) : $perm;
-            if ($permModel) {
-                $ids[] = $permModel->id;
-            }
-        }
-
-        $this->permissions()->sync($ids);
-        $this->relations = [];
-        return $this;
-    }
-
-    public function hasDirectPermission(string $permission): bool
-    {
-        $directPerms = $this->permissions;
-        if (!is_array($directPerms)) {
-            return false;
-        }
-
-        foreach ($directPerms as $p) {
-            if ($p->name === $permission) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->rolePermissionsCache = array_values($names);
     }
 
     public function hasPermissionViaRole(string $permission): bool
     {
-        $roles = $this->roles;
-        if (!is_array($roles)) {
-            return false;
-        }
-
-        foreach ($roles as $role) {
-            if ($role->hasPermission($permission)) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array($permission, $this->getRolePermissions(), true);
     }
 
     public function hasPermission(string $permission): bool
@@ -222,15 +242,9 @@ trait HasRoles
             }
         }
 
-        // Via roles
-        if (is_array($this->roles)) {
-            foreach ($this->roles as $role) {
-                if (is_array($role->permissions)) {
-                    foreach ($role->permissions as $p) {
-                        $perms[$p->name] = $p->name;
-                    }
-                }
-            }
+        // Via roles (single batched query, 0 N+1!)
+        foreach ($this->getRolePermissions() as $pName) {
+            $perms[$pName] = $pName;
         }
 
         return array_values($perms);
@@ -239,6 +253,7 @@ trait HasRoles
     public function clearRelationCache(): static
     {
         $this->relations = [];
+        $this->rolePermissionsCache = null;
         return $this;
     }
 }

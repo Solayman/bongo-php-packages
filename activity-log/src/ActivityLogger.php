@@ -59,29 +59,36 @@ class ActivityLogger
         return $this;
     }
 
+    /**
+     * Resolve model class and string ID for polymorphic relationship columns.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function resolveMorph(mixed $model): ?array
+    {
+        if (!is_object($model)) {
+            return null;
+        }
+
+        $type = get_class($model);
+        $id = method_exists($model, 'getKey') ? (string) $model->getKey() : (string) ($model->id ?? '');
+
+        return [$type, $id];
+    }
+
     public function log(string $description): Activity
     {
         $defaultLog = function_exists('config') ? (string) config('activitylog.default_log_name', 'default') : 'default';
         $logName = $this->logName ?? $defaultLog;
 
-        $subjectType = null;
-        $subjectId = null;
-        if (is_object($this->subject)) {
-            $subjectType = get_class($this->subject);
-            $subjectId = method_exists($this->subject, 'getKey') ? (string) $this->subject->getKey() : (string) ($this->subject->id ?? '');
-        }
+        [$subjectType, $subjectId] = self::resolveMorph($this->subject) ?? [null, null];
 
         $causer = $this->causer;
         if ($causer === null && class_exists(Auth::class) && method_exists(Auth::class, 'user')) {
             $causer = Auth::user();
         }
 
-        $causerType = null;
-        $causerId = null;
-        if (is_object($causer)) {
-            $causerType = get_class($causer);
-            $causerId = method_exists($causer, 'getKey') ? (string) $causer->getKey() : (string) ($causer->id ?? '');
-        }
+        [$causerType, $causerId] = self::resolveMorph($causer) ?? [null, null];
 
         $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
         if ($ip !== null && str_contains($ip, ',')) {

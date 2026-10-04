@@ -72,6 +72,52 @@ class SettingsManager
     }
 
     /**
+     * Batch load multiple settings into the in-memory cache in a single query.
+     * Prevents N+1 queries when accessing multiple setting keys.
+     *
+     * @param array<string> $keys
+     * @return array<string, mixed>
+     */
+    public function load(array $keys): array
+    {
+        $keysToFetch = [];
+        $result = [];
+
+        foreach ($keys as $k) {
+            $k = (string) $k;
+            if (array_key_exists($k, $this->cache)) {
+                $result[$k] = $this->cache[$k];
+            } else {
+                $keysToFetch[] = $k;
+            }
+        }
+
+        if (!empty($keysToFetch) && !$this->allLoaded) {
+            try {
+                $rows = Setting::whereIn('setting_key', $keysToFetch)->get();
+                if (is_array($rows)) {
+                    foreach ($rows as $setting) {
+                        $val = $setting->getCastedValue();
+                        $this->cache[$setting->setting_key] = $val;
+                        $result[$setting->setting_key] = $val;
+                    }
+                }
+            } catch (\Throwable) {
+                // Ignore DB error
+            }
+        }
+
+        foreach ($keys as $k) {
+            $k = (string) $k;
+            if (!array_key_exists($k, $result)) {
+                $result[$k] = $this->cache[$k] ?? null;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Set a setting value, or multiple values if an array is passed.
      */
     public function set(
@@ -81,8 +127,49 @@ class SettingsManager
         ?string $group = null
     ): void {
         if (is_array($key)) {
+            $keys = array_map('strval', array_keys($key));
+            $existingMap = [];
+            try {
+                $existingRows = Setting::whereIn('setting_key', $keys)->get();
+                if (is_array($existingRows)) {
+                    foreach ($existingRows as $row) {
+                        $existingMap[$row->setting_key] = $row;
+                    }
+                }
+            } catch (\Throwable) {
+                // Ignore DB error during batch fetch
+            }
+
             foreach ($key as $k => $v) {
-                $this->set((string) $k, $v, $type, $group);
+                $strKey = (string) $k;
+                $detectedType = $type ?? Setting::detectType($v);
+                $groupName = $group ?? (function_exists('config') ? config('settings.default_group', 'general') : 'general');
+                $serialized = Setting::serialize($v, $detectedType);
+
+                try {
+                    $existing = $existingMap[$strKey] ?? null;
+                    if ($existing !== null) {
+                        $existing->value = $serialized;
+                        $existing->type = $detectedType;
+                        if ($group !== null) {
+                            $existing->setting_group = $groupName;
+                        }
+                        $existing->save();
+                    } else {
+                        $newSetting = new Setting([
+                            'setting_key' => $strKey,
+                            'value' => $serialized,
+                            'type' => $detectedType,
+                            'setting_group' => $groupName,
+                        ]);
+                        $newSetting->save();
+                        $existingMap[$strKey] = $newSetting;
+                    }
+                } catch (\Throwable) {
+                    // Keep memory cache updated even if DB error
+                }
+
+                $this->cache[$strKey] = Setting::cast($serialized, $detectedType);
             }
             return;
         }

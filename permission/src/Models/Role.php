@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Bongo\Packages\Permission\Models;
 
+use Bongo\Packages\Permission\Traits\HasPermissions;
 use System\Database\BelongsToMany;
 use System\Database\Model;
 
 class Role extends Model
 {
+    use HasPermissions;
+
     protected static $table = 'roles';
     protected array $fillable = ['name', 'guard_name'];
 
@@ -40,69 +43,9 @@ class Role extends Model
         );
     }
 
-    public function givePermissionTo(string|PermissionModel|array $permissions): static
-    {
-        $permissions = is_array($permissions) ? $permissions : [$permissions];
-
-        foreach ($permissions as $perm) {
-            $permModel = is_string($perm)
-                ? PermissionModel::findOrCreate($perm, $this->guard_name ?? 'web')
-                : $perm;
-
-            if ($permModel) {
-                $this->permissions()->attach($permModel->id);
-            }
-        }
-
-        $this->relations = [];
-        return $this;
-    }
-
-    public function revokePermissionTo(string|PermissionModel|array $permissions): static
-    {
-        $permissions = is_array($permissions) ? $permissions : [$permissions];
-
-        foreach ($permissions as $perm) {
-            $name = is_string($perm) ? $perm : $perm->name;
-            $permModel = PermissionModel::findByName($name, $this->guard_name ?? 'web');
-            if ($permModel) {
-                $this->permissions()->detach($permModel->id);
-            }
-        }
-
-        $this->relations = [];
-        return $this;
-    }
-
-    public function syncPermissions(array $permissions): static
-    {
-        $ids = [];
-        foreach ($permissions as $perm) {
-            $permModel = is_string($perm)
-                ? PermissionModel::findOrCreate($perm, $this->guard_name ?? 'web')
-                : $perm;
-            if ($permModel) {
-                $ids[] = $permModel->id;
-            }
-        }
-
-        $this->permissions()->sync($ids);
-        $this->relations = [];
-        return $this;
-    }
-
     public function hasPermission(string $permission): bool
     {
-        $list = $this->permissions;
-        if (is_array($list)) {
-            foreach ($list as $p) {
-                if ($p->name === $permission) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $this->hasDirectPermission($permission);
     }
 
     public function clearRelationCache(): static
