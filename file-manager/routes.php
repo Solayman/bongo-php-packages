@@ -22,4 +22,5 @@ Route::middleware($middleware)->group(function () use ($prefix) {
     Route::post("/{$prefix}/save", [FileManagerController::class, 'save']);
     Route::get("/{$prefix}/download", [FileManagerController::class, 'download']);
     Route::get("/{$prefix}/thumb", [FileManagerController::class, 'thumbnail']);
+    Route::get("/{$prefix}/script", [FileManagerController::class, 'script']);
 });

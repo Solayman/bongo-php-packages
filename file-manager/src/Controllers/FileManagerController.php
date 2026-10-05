@@ -404,4 +404,23 @@ class FileManagerController
             exit;
         }
     }
+
+    /**
+     * Return javascript helper for standalone and TinyMCE integrations.
+     */
+    public function script(): string
+    {
+        $path = __DIR__ . '/../../views/script.php';
+        if (file_exists($path)) {
+            $content = (string) file_get_contents($path);
+            $content = preg_replace('/^<script>\s*/i', '', $content);
+            $content = preg_replace('/<\/script>\s*$/i', '', (string) $content);
+            if (!headers_sent()) {
+                header('Content-Type: application/javascript; charset=utf-8');
+            }
+            return (string) $content;
+        }
+
+        return '';
+    }
 }
