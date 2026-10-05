@@ -256,4 +256,12 @@ class FileManagerTest extends TestCase
         $this->assertFalse(PathSecurity::isAllowedForUpload('avatar.php.png'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('file.phtml.jpg'));
     }
+
+    public function testScriptHelperEndpoint(): void
+    {
+        $controller = new FileManagerController();
+        $js = $controller->script();
+        $this->assertContains('bongoFileManager', $js);
+        $this->assertContains('bongoTinyMCEPicker', $js);
+    }
 }

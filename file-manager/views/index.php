@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= function_exists('csrf_token') ? htmlspecialchars((string) csrf_token(), ENT_QUOTES, 'UTF-8') : '' ?>">
     <title>File Manager & Code Editor - Bongo</title>
     <!-- CodeMirror 5 for Zero-Dependency Professional Code Editing -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -1060,6 +1061,12 @@
             prefix: '<?= htmlspecialchars((string) ($prefix ?? 'filemanager'), ENT_QUOTES, 'UTF-8') ?>',
             callback: '<?= htmlspecialchars((string) ($callback ?? ''), ENT_QUOTES, 'UTF-8') ?>',
             type: '<?= htmlspecialchars((string) ($type ?? 'all'), ENT_QUOTES, 'UTF-8') ?>',
+            csrfToken: '<?= function_exists('csrf_token') ? htmlspecialchars((string) csrf_token(), ENT_QUOTES, 'UTF-8') : '' ?>',
+
+            getCsrfToken() {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                return meta && meta.content ? meta.content : this.csrfToken;
+            },
 
             init() {
                 this.initCodeEditor();
@@ -1495,7 +1502,11 @@
                 formData.append('content', content);
 
                 try {
-                    const res = await fetch(`/${this.prefix}/save`, { method: 'POST', body: formData });
+                    const res = await fetch(`/${this.prefix}/save`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                        body: formData
+                    });
                     const data = await res.json();
                     if (data.status === 'success') {
                         status.textContent = 'Saved at ' + new Date().toLocaleTimeString();
@@ -1606,7 +1617,11 @@
                 formData.append('path', this.currentPath);
                 formData.append('name', name);
 
-                const res = await fetch(`/${this.prefix}/folder`, { method: 'POST', body: formData });
+                const res = await fetch(`/${this.prefix}/folder`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
                 const data = await res.json();
 
                 if (data.status === 'success') {
@@ -1636,7 +1651,11 @@
                 formData.append('path', this.targetActionItem);
                 formData.append('new_name', newName);
 
-                const res = await fetch(`/${this.prefix}/rename`, { method: 'POST', body: formData });
+                const res = await fetch(`/${this.prefix}/rename`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
                 const data = await res.json();
 
                 if (data.status === 'success') {
@@ -1679,7 +1698,11 @@
                 formData.append('path', this.targetActionItem);
                 formData.append('target', target);
 
-                const res = await fetch(`/${this.prefix}/move`, { method: 'POST', body: formData });
+                const res = await fetch(`/${this.prefix}/move`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
                 const data = await res.json();
 
                 if (data.status === 'success') {
@@ -1702,7 +1725,11 @@
                 const formData = new FormData();
                 formData.append('path', this.targetActionItem);
 
-                const res = await fetch(`/${this.prefix}/delete`, { method: 'POST', body: formData });
+                const res = await fetch(`/${this.prefix}/delete`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
                 const data = await res.json();
 
                 if (data.status === 'success') {
@@ -1729,7 +1756,11 @@
                 }
 
                 this.showToast('Uploading...', 'success');
-                const res = await fetch(`/${this.prefix}/upload`, { method: 'POST', body: formData });
+                const res = await fetch(`/${this.prefix}/upload`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
                 const data = await res.json();
 
                 if (data.status === 'success' || data.status === 'partial') {
