@@ -550,6 +550,24 @@
             transition: all 0.15s;
         }
         .btn-preview:hover { background: #e2e8f0; color: #0f172a; }
+        .btn-action-sm {
+            background: #ffffff;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            padding: 7px 11px;
+            border-radius: 4px;
+            font-size: 12.5px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .btn-action-sm:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
+        .btn-action-sm.danger { color: #dc2626; border-color: #fca5a5; }
+        .btn-action-sm.danger:hover { background: #fee2e2; border-color: #ef4444; color: #b91c1c; }
 
         /* Drag & Drop Overlay */
         .drop-overlay {
@@ -874,6 +892,21 @@
                     <span>No file selected</span>
                 </div>
                 <div class="picker-action-group">
+                    <a class="btn-action-sm" id="btnBottomDownload" href="#" title="Download" style="display: none;">
+                        <i class="fa-solid fa-download"></i> <span class="btn-label-text">Download</span>
+                    </a>
+                    <button class="btn-action-sm" id="btnBottomCopy" onclick="app.copySelected()" title="Copy to folder" style="display: none;">
+                        <i class="fa-regular fa-copy"></i> <span class="btn-label-text">Copy</span>
+                    </button>
+                    <button class="btn-action-sm" id="btnBottomMove" onclick="app.moveSelected()" title="Move to folder" style="display: none;">
+                        <i class="fa-solid fa-arrows-up-down-left-right"></i> <span class="btn-label-text">Move</span>
+                    </button>
+                    <button class="btn-action-sm" id="btnBottomRename" onclick="app.renameSelected()" title="Rename" style="display: none;">
+                        <i class="fa-solid fa-pen"></i> <span class="btn-label-text">Rename</span>
+                    </button>
+                    <button class="btn-action-sm danger" id="btnBottomDelete" onclick="app.deleteSelected()" title="Delete" style="display: none;">
+                        <i class="fa-solid fa-trash-can"></i> <span class="btn-label-text">Delete</span>
+                    </button>
                     <button class="btn-preview" id="btnBottomPreview" onclick="app.previewSelected()" style="display: none;">
                         <i class="fa-regular fa-eye"></i> Preview
                     </button>
@@ -963,6 +996,26 @@
             <div class="modal-footer">
                 <button class="btn-preview" onclick="app.closeModal('moveModal')">Cancel</button>
                 <button class="btn-confirm" onclick="app.submitMove()">Move</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy Modal -->
+    <div class="modal" id="copyModal">
+        <div class="modal-box" style="width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fa-regular fa-copy" style="color: #0284c7;"></i> Copy Item</div>
+                <button class="modal-close-btn" onclick="app.closeModal('copyModal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Destination Folder</label>
+                    <select class="form-input" id="copyFolderSelect"></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-preview" onclick="app.closeModal('copyModal')">Cancel</button>
+                <button class="btn-confirm" onclick="app.submitCopy()">Copy</button>
             </div>
         </div>
     </div>
@@ -1494,6 +1547,7 @@
                             <td>${f.updated_at || '—'}</td>
                             <td style="text-align: right;">
                                 <div class="item-action-btns" style="justify-content: flex-end;">
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${f.path}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
                                     <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${f.path}', '${f.name}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
                                     <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${f.path}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
                                     <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${f.path}', '${f.name}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
@@ -1523,6 +1577,7 @@
                                 <div class="item-action-btns" style="justify-content: flex-end;">
                                     <a class="action-icon-btn" href="/${this.prefix}/download?path=${encodeURIComponent(f.path)}" title="Download" onclick="event.stopPropagation();"><i class="fa-solid fa-download"></i></a>
                                     ${f.type === 'code' ? `<button class="action-icon-btn" onclick="event.stopPropagation(); app.openCodeEditor(${JSON.stringify(f).replace(/"/g, '&quot;')})" title="Edit Code"><i class="fa-solid fa-code"></i></button>` : ''}
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${f.path}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
                                     <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${f.path}', '${f.name}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
                                     <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${f.path}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
                                     <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${f.path}', '${f.name}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
@@ -1547,6 +1602,11 @@
                 const info = document.getElementById('selectedFileInfo');
                 const btnPrev = document.getElementById('btnBottomPreview');
                 const btnConf = document.getElementById('btnBottomConfirm');
+                const btnDl = document.getElementById('btnBottomDownload');
+                const btnCopy = document.getElementById('btnBottomCopy');
+                const btnMove = document.getElementById('btnBottomMove');
+                const btnRename = document.getElementById('btnBottomRename');
+                const btnDelete = document.getElementById('btnBottomDelete');
 
                 if (this.selectedItem) {
                     info.innerHTML = `
@@ -1559,11 +1619,51 @@
                         btnPrev.style.display = 'none';
                     }
                     if (btnConf) btnConf.style.display = 'inline-flex';
+
+                    // Actions toolbar
+                    if (btnCopy) btnCopy.style.display = 'inline-flex';
+                    if (btnMove) btnMove.style.display = 'inline-flex';
+                    if (btnRename) btnRename.style.display = 'inline-flex';
+                    if (btnDelete) btnDelete.style.display = 'inline-flex';
+
+                    if (btnDl) {
+                        if (!this.selectedItem.is_dir) {
+                            btnDl.href = `/${this.prefix}/download?path=${encodeURIComponent(this.selectedItem.path)}`;
+                            btnDl.style.display = 'inline-flex';
+                        } else {
+                            btnDl.style.display = 'none';
+                        }
+                    }
                 } else {
                     info.innerHTML = `<i class="fa-regular fa-hand-pointer" style="color: #94a3b8;"></i> <span>No file selected</span>`;
                     btnPrev.style.display = 'none';
                     if (btnConf) btnConf.style.display = 'none';
+                    if (btnCopy) btnCopy.style.display = 'none';
+                    if (btnMove) btnMove.style.display = 'none';
+                    if (btnRename) btnRename.style.display = 'none';
+                    if (btnDelete) btnDelete.style.display = 'none';
+                    if (btnDl) btnDl.style.display = 'none';
                 }
+            },
+
+            copySelected() {
+                if (!this.selectedItem) return;
+                this.promptCopy(this.selectedItem.path);
+            },
+
+            moveSelected() {
+                if (!this.selectedItem) return;
+                this.promptMove(this.selectedItem.path);
+            },
+
+            renameSelected() {
+                if (!this.selectedItem) return;
+                this.promptRename(this.selectedItem.path, this.selectedItem.name);
+            },
+
+            deleteSelected() {
+                if (!this.selectedItem) return;
+                this.promptDelete(this.selectedItem.path, this.selectedItem.name);
             },
 
             openItem(item) {
@@ -1847,6 +1947,53 @@
                 if (data.status === 'success') {
                     this.closeModal('moveModal');
                     this.showToast('Item moved.', 'success');
+                    this.refresh();
+                    this.loadTree();
+                } else {
+                    this.showToast(data.message, 'error');
+                }
+            },
+
+            promptCopy(path) {
+                this.targetActionItem = path;
+                const select = document.getElementById('copyFolderSelect');
+                select.innerHTML = '<option value="">(Root)</option>';
+
+                const populateOptions = (nodes, prefix = '') => {
+                    nodes.forEach(n => {
+                        select.innerHTML += `<option value="${n.path}">${prefix}/${n.name}</option>`;
+                        if (n.children && n.children.length > 0) {
+                            populateOptions(n.children, prefix + '/' + n.name);
+                        }
+                    });
+                };
+
+                fetch(`/${this.prefix}/tree`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            populateOptions(data.tree);
+                            this.openModal('copyModal');
+                        }
+                    });
+            },
+
+            async submitCopy() {
+                const target = document.getElementById('copyFolderSelect').value;
+                const formData = new FormData();
+                formData.append('path', this.targetActionItem);
+                formData.append('target', target);
+
+                const res = await fetch(`/${this.prefix}/copy`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    this.closeModal('copyModal');
+                    this.showToast('Item copied.', 'success');
                     this.refresh();
                     this.loadTree();
                 } else {
