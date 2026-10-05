@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Permissions-Policy" content="unload=*">
     <meta name="csrf-token" content="<?= function_exists('csrf_token') ? htmlspecialchars((string) csrf_token(), ENT_QUOTES, 'UTF-8') : '' ?>">
     <title>File Manager & Code Editor - Bongo</title>
     <!-- CodeMirror 5 for Zero-Dependency Professional Code Editing -->
@@ -739,7 +740,7 @@
         }
     </style>
 </head>
-<body>
+<body data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" spellcheck="false">
 
     <!-- Header Navbar -->
     <header class="navbar">
