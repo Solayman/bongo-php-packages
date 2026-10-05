@@ -280,7 +280,7 @@ class FileManagerService
     /**
      * Copy a file or directory.
      */
-    public function copyItem(string $sourcePath, string $destFolder): bool
+    public function copyItem(string $sourcePath, string $destFolder, ?string $newName = null): bool
     {
         $cleanSrc = PathSecurity::sanitize($sourcePath);
         $cleanDst = PathSecurity::sanitize($destFolder);
@@ -299,9 +299,12 @@ class FileManagerService
             return false;
         }
 
-        $destination = $targetDir . '/' . basename($source);
+        $customName = $newName !== null ? trim(PathSecurity::sanitize($newName)) : '';
+        $baseName = $customName !== '' ? $customName : basename($source);
+
+        $destination = $targetDir . '/' . $baseName;
         if (file_exists($destination)) {
-            $info = pathinfo($source);
+            $info = pathinfo($destination);
             $destination = $targetDir . '/' . $info['filename'] . '_copy.' . ($info['extension'] ?? '');
         }
 

@@ -1008,9 +1008,14 @@
                 <button class="modal-close-btn" onclick="app.closeModal('copyModal')"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label class="form-label">Destination Folder</label>
                     <select class="form-input" id="copyFolderSelect"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Name (Optional)</label>
+                    <input type="text" class="form-input" id="copyNewNameInput" placeholder="Leave blank to keep same name" onkeydown="if(event.key==='Enter') app.submitCopy()">
+                    <span style="font-size: 11.5px; color: var(--text-muted); display: block; margin-top: 4px;">Leave blank to keep original name (auto-appends _copy if exists).</span>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1973,6 +1978,11 @@
                     .then(data => {
                         if (data.status === 'success') {
                             populateOptions(data.tree);
+                            const nameInput = document.getElementById('copyNewNameInput');
+                            if (nameInput) {
+                                const currentName = path.split('/').pop() || '';
+                                nameInput.value = currentName;
+                            }
                             this.openModal('copyModal');
                         }
                     });
@@ -1980,9 +1990,13 @@
 
             async submitCopy() {
                 const target = document.getElementById('copyFolderSelect').value;
+                const newName = (document.getElementById('copyNewNameInput').value || '').trim();
                 const formData = new FormData();
                 formData.append('path', this.targetActionItem);
                 formData.append('target', target);
+                if (newName) {
+                    formData.append('new_name', newName);
+                }
 
                 const res = await fetch(`/${this.prefix}/copy`, {
                     method: 'POST',

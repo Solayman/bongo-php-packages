@@ -54,9 +54,9 @@ class FileManager
         return self::service()->moveItem($sourcePath, $destFolder);
     }
 
-    public static function copyItem(string $sourcePath, string $destFolder): bool
+    public static function copyItem(string $sourcePath, string $destFolder, ?string $newName = null): bool
     {
-        return self::service()->copyItem($sourcePath, $destFolder);
+        return self::service()->copyItem($sourcePath, $destFolder, $newName);
     }
 
     public static function readFile(string $path): string

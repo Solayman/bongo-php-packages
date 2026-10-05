@@ -193,8 +193,9 @@ class FileManagerController
     {
         $path = (string) ($request->input('path') ?? '');
         $target = (string) ($request->input('target') ?? '');
+        $newName = $request->input('new_name') !== null ? (string) $request->input('new_name') : null;
 
-        $ok = FileManager::service()->copyItem($path, $target);
+        $ok = FileManager::service()->copyItem($path, $target, $newName);
         return [
             'status' => $ok ? 'success' : 'error',
             'message' => $ok ? 'Item copied.' : 'Failed to copy item.',
