@@ -5,7 +5,7 @@
     "sslcommerz": {
       "name": "sslcommerz",
       "latest": "1.0.0",
-      "description": "SSLCommerz payment gateway for Bangladesh",
+      "description": "SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, and CLI verification",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -18,7 +18,7 @@
     "bkash": {
       "name": "bkash",
       "latest": "1.0.0",
-      "description": "bKash Tokenized Checkout payment gateway for Bangladesh",
+      "description": "bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, and CLI verification",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -31,7 +31,7 @@
     "sms": {
       "name": "sms",
       "latest": "1.0.0",
-      "description": "SMS gateways (BulkSMSBD, SSL Wireless, Alpha SMS) and phone OTP login",
+      "description": "Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS) with 6-digit cryptographic phone OTP generation and throttling",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -44,7 +44,7 @@
     "s3": {
       "name": "s3",
       "latest": "1.0.0",
-      "description": "S3, DigitalOcean Spaces, Cloudflare R2, and MinIO cloud storage driver",
+      "description": "AWS Signature Version 4 (SigV4) object storage disk for Amazon S3, DigitalOcean Spaces, Cloudflare R2, and MinIO with presigned temporary URLs",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -57,7 +57,7 @@
     "social-login": {
       "name": "social-login",
       "latest": "1.0.0",
-      "description": "OAuth 2.0 social authentication for Google, GitHub, and Facebook",
+      "description": "OAuth 2.0 social authentication for Google, GitHub, and Facebook with CSRF state protection, private email resolution, and SVG buttons",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -70,7 +70,7 @@
     "nagad": {
       "name": "nagad",
       "latest": "1.0.0",
-      "description": "Nagad payment gateway for Bangladesh",
+      "description": "Nagad Mobile Financial Service (MFS) payment gateway with native OpenSSL RSA-2048 encryption, two-step checkout, and CLI key generator",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -83,7 +83,7 @@
     "stripe": {
       "name": "stripe",
       "latest": "1.0.0",
-      "description": "Stripe international payments, Checkout Sessions, and webhooks",
+      "description": "Stripe international payments, Checkout Sessions, Payment Intents, full/partial refunds, and HMAC-SHA256 verified webhooks",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -96,7 +96,7 @@
     "two-factor": {
       "name": "two-factor",
       "latest": "1.0.0",
-      "description": "RFC 6238 TOTP two-factor authentication with pure-PHP SVG QR codes and recovery codes",
+      "description": "RFC 6238 TOTP two-factor authentication with pure-PHP SVG QR codes, single-use hashed recovery backup codes, and middleware",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -109,7 +109,7 @@
     "image": {
       "name": "image",
       "latest": "1.0.0",
-      "description": "Pure-PHP image resizing, smart cropping, watermarking, filters, and WebP optimization",
+      "description": "Pure-PHP image resizing, smart cropping, watermarking with alpha blending, visual filters, and WebP optimization",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -122,7 +122,7 @@
     "backup": {
       "name": "backup",
       "latest": "1.0.0",
-      "description": "Zero-dependency database and asset backup engine with multi-disk storage and retention cleanup",
+      "description": "Zero-dependency multi-database (SQLite, MySQL, PostgreSQL) and asset backup engine with multi-disk storage and retention cleanup",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -135,7 +135,7 @@
     "permission": {
       "name": "permission",
       "latest": "1.0.0",
-      "description": "Role-Based Access Control (RBAC) and permissions management with middleware and CLI tools",
+      "description": "Role-Based Access Control (RBAC) and permissions management with HasRoles trait, super-admin bypass, and CLI tools",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -148,7 +148,7 @@
     "zip": {
       "name": "zip",
       "latest": "1.0.0",
-      "description": "Pure-PHP ZIP compression, extraction, streaming download, and Zip-Slip protection",
+      "description": "Pure-PHP ZIP compression, extraction, streaming download, and Zip-Slip path traversal protection",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -161,7 +161,7 @@
     "ftp": {
       "name": "ftp",
       "latest": "1.0.0",
-      "description": "Zero-dependency FTP and FTPS filesystem driver and client for Storage facade",
+      "description": "Zero-dependency FTP and FTPS filesystem driver and client extending Bongo Storage facade with stream socket fallback",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -174,7 +174,7 @@
     "paypal": {
       "name": "paypal",
       "latest": "1.0.0",
-      "description": "PayPal REST API v2 Checkout, payment capture, refunds, and verified webhooks",
+      "description": "PayPal REST API v2 Checkout, payment capture, authorization holds, refunds, and cryptographically verified webhooks",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -187,7 +187,7 @@
     "api-tools": {
       "name": "api-tools",
       "latest": "1.0.0",
-      "description": "API Resources (JSON transformers), OpenAPI 3.0 (Swagger UI & Redoc), API rate limiter, and ApiResponse",
+      "description": "API development suite with JsonResource transformers, OpenAPI 3.0 docs generator, and sliding window rate limiter",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -200,7 +200,7 @@
     "settings": {
       "name": "settings",
       "latest": "1.0.0",
-      "description": "Dynamic application and store settings in database with type casting, caching, CLI, and template directive",
+      "description": "Dynamic application and store settings in database with type casting, multi-tier caching, CLI suite, and template directive",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -213,7 +213,7 @@
     "seo": {
       "name": "seo",
       "latest": "1.0.0",
-      "description": "Search Engine Optimization (SEO), OpenGraph, Twitter Cards, Schema.org JSON-LD, and dynamic XML Sitemap generator",
+      "description": "Search Engine Optimization suite with OpenGraph, Twitter Cards, Schema.org JSON-LD structured data, and dynamic XML sitemap generator",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -239,7 +239,7 @@
     "health": {
       "name": "health",
       "latest": "1.0.0",
-      "description": "Application health checks and uptime monitoring for database, storage, cache, redis, and disk space",
+      "description": "Production uptime monitoring and health check suite for Database, Storage, Cache, Redis, and Disk Space with JSON endpoint",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
@@ -252,7 +252,7 @@
     "file-manager": {
       "name": "file-manager",
       "latest": "1.0.0",
-      "description": "Zero-dependency web file manager with folder tree, media preview, WYSIWYG connector, and professional code editor",
+      "description": "Zero-dependency web file manager with folder tree, media preview, standalone/TinyMCE picker, and CodeMirror 5 embedded code editor",
       "versions": {
         "1.0.0": {
           "version": "1.0.0",
