@@ -1133,10 +1133,10 @@
             targetActionItem: null,
             editor: null,
             editorFilePath: '',
-            prefix: '<?= htmlspecialchars((string) ($prefix ?? 'filemanager'), ENT_QUOTES, 'UTF-8') ?>',
-            callback: '<?= htmlspecialchars((string) ($callback ?? ''), ENT_QUOTES, 'UTF-8') ?>',
-            type: '<?= htmlspecialchars((string) ($type ?? 'all'), ENT_QUOTES, 'UTF-8') ?>',
-            csrfToken: '<?= function_exists('csrf_token') ? htmlspecialchars((string) csrf_token(), ENT_QUOTES, 'UTF-8') : '' ?>',
+            prefix: <?= json_encode((string) ($prefix ?? 'filemanager'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            callback: <?= json_encode((string) ($callback ?? ''), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            type: <?= json_encode((string) ($type ?? 'all'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            csrfToken: <?= json_encode(function_exists('csrf_token') ? (string) csrf_token() : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
 
             getCsrfToken() {
                 const meta = document.querySelector('meta[name="csrf-token"]');

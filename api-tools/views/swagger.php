@@ -17,7 +17,7 @@
     <script>
         window.onload = function() {
             SwaggerUIBundle({
-                url: "<?= htmlspecialchars($jsonRoute ?? '/api/openapi.json', ENT_QUOTES, 'UTF-8') ?>",
+                url: <?= json_encode((string) ($jsonRoute ?? '/api/openapi.json'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [

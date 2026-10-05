@@ -372,4 +372,56 @@ class FileManagerTest extends TestCase
         $this->assertContains('bongoFileManager', $js);
         $this->assertContains('bongoTinyMCEPicker', $js);
     }
+
+    public function testDownloadAndThumbnailSecurity(): void
+    {
+        $controller = new FileManagerController();
+
+        // 1. Download non-existent file returns 404 text
+        $_GET['path'] = 'nonexistent.txt';
+        $req404 = new Request();
+        ob_start();
+        $controller->download($req404);
+        $out404 = ob_get_clean();
+        $this->assertSame('File not found.', $out404);
+
+        // 2. Download hidden file rejected
+        $_GET['path'] = '.env';
+        $reqHidden = new Request();
+        ob_start();
+        $controller->download($reqHidden);
+        $outHidden = ob_get_clean();
+        $this->assertSame('File not found.', $outHidden);
+
+        // 3. Download valid existing file succeeds
+        FileManager::saveFile('valid_download.txt', 'hello download');
+        $_GET['path'] = 'valid_download.txt';
+        $reqValid = new Request();
+        ob_start();
+        $controller->download($reqValid);
+        $outValid = ob_get_clean();
+        $this->assertSame('hello download', $outValid);
+
+        // 4. Thumbnail non-image returns Image not found
+        $_GET['path'] = 'valid_download.txt';
+        $reqThumbText = new Request();
+        ob_start();
+        $controller->thumbnail($reqThumbText);
+        $outThumbText = ob_get_clean();
+        $this->assertSame('Image not found.', $outThumbText);
+
+        unset($_GET['path']);
+    }
+
+    public function testRealpathBoundaryProtection(): void
+    {
+        // Path traversal deletion cannot delete outside root or delete root
+        $this->assertFalse(FileManager::deleteItem(''));
+        $this->assertFalse(FileManager::deleteItem('../'));
+        $this->assertFalse(FileManager::deleteItem('../../'));
+
+        // Renaming / moving outside root rejected
+        $this->assertFalse(FileManager::renameItem('', 'foo.txt'));
+        $this->assertFalse(FileManager::moveItem('', 'somedir'));
+    }
 }

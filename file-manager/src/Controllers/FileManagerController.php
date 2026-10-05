@@ -277,7 +277,18 @@ class FileManagerController
             return;
         }
 
-        $filename = basename($fullPath);
+        // Verify within base directory boundary
+        $realTarget = realpath($fullPath);
+        $realRoot = realpath(FileManager::service()->resolveFullPath(''));
+        if ($realTarget === false || $realRoot === false || !str_starts_with(str_replace('\\', '/', $realTarget), str_replace('\\', '/', $realRoot))) {
+            if (!headers_sent()) {
+                http_response_code(403);
+            }
+            echo "Access denied.";
+            return;
+        }
+
+        $filename = str_replace(["\r", "\n", '"', "'", ';'], '', basename($fullPath));
         $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
         $size = (int) filesize($fullPath);
 
@@ -315,6 +326,17 @@ class FileManagerController
                 http_response_code(404);
             }
             echo "Image not found.";
+            return;
+        }
+
+        // Verify within base directory boundary
+        $realTarget = realpath($fullPath);
+        $realRoot = realpath(FileManager::service()->resolveFullPath(''));
+        if ($realTarget === false || $realRoot === false || !str_starts_with(str_replace('\\', '/', $realTarget), str_replace('\\', '/', $realRoot))) {
+            if (!headers_sent()) {
+                http_response_code(403);
+            }
+            echo "Access denied.";
             return;
         }
 
