@@ -85,4 +85,14 @@ class FtpTest extends TestCase
             $client->connect();
         });
     }
+
+    public function testPathTraversalAttemptCannotEscapeRoot(): void
+    {
+        $client = new FtpClient(['root' => '/var/www']);
+        $client->upload('../../etc/passwd', 'dummy');
+
+        // Path should be normalized safely inside /var/www/etc/passwd, not escaping root
+        $this->assertTrue($client->exists('etc/passwd'));
+        $this->assertSame('dummy', $client->download('../../etc/passwd'));
+    }
 }

@@ -90,9 +90,11 @@ class ActivityLogger
 
         [$causerType, $causerId] = self::resolveMorph($causer) ?? [null, null];
 
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
-        if ($ip !== null && str_contains($ip, ',')) {
-            $ip = trim(explode(',', $ip)[0]);
+        $ip = null;
+        if (class_exists(\System\Http\Request::class)) {
+            $ip = \System\Http\Request::ip();
+        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
+            $ip = (string) $_SERVER['REMOTE_ADDR'];
         }
         if ($ip !== null) {
             $ip = substr($ip, 0, 45);

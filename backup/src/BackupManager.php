@@ -49,8 +49,11 @@ class BackupManager
         mkdir($tmpDir, 0755, true);
 
         $timestamp = date('Y-m-d_His');
-        $appName = strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', (string) (function_exists('config') ? config('app.name', 'bongo') : 'bongo')));
-        $zipFilename = $options['filename'] ?? "{$appName}_backup_{$timestamp}.zip";
+        $rawFilename = (string) ($options['filename'] ?? "{$appName}_backup_{$timestamp}.zip");
+        $zipFilename = basename(str_replace(["\0", '\\'], ['', '/'], $rawFilename));
+        if ($zipFilename === '' || $zipFilename === '.' || $zipFilename === '..') {
+            $zipFilename = "{$appName}_backup_{$timestamp}.zip";
+        }
 
         $dbSize = 0;
         $filesSize = 0;

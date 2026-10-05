@@ -347,14 +347,28 @@ class FtpClient
 
     protected function normalizePath(string $path): string
     {
+        $path = str_replace("\0", '', $path);
         $root = rtrim((string) ($this->config['root'] ?? '/'), '/');
-        $clean = ltrim(str_replace('\\', '/', $path), '/');
+        $raw = str_replace('\\', '/', $path);
+
+        $segments = [];
+        foreach (explode('/', $raw) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+            if ($segment === '..') {
+                array_pop($segments);
+            } else {
+                $segments[] = $segment;
+            }
+        }
+        $clean = implode('/', $segments);
 
         if ($root === '' || $root === '/') {
             return '/' . $clean;
         }
 
-        return $root . '/' . $clean;
+        return $clean === '' ? $root : $root . '/' . $clean;
     }
 
     public function isConnected(): bool

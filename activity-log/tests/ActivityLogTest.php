@@ -185,4 +185,15 @@ class ActivityLogTest extends TestCase
         $this->assertSame(0, $status);
         $this->assertContains('Cleaned', $output);
     }
+
+    public function testUntrustedProxyXForwardedForIgnored(): void
+    {
+        $_SERVER['REMOTE_ADDR'] = '192.168.1.50';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.195';
+
+        $log = activity()->log('Untrusted proxy test');
+        $this->assertSame('192.168.1.50', $log->ip_address);
+        unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+    }
 }
+
