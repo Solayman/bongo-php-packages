@@ -294,7 +294,7 @@ class SeoManager
 
         // Schema.org JSON-LD
         foreach ($this->schemas as $s) {
-            $json = json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            $json = json_encode($s, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP);
             $lines[] = "<script type=\"application/ld+json\">\n{$json}\n</script>";
         }
 

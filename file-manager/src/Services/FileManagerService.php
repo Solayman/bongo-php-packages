@@ -204,6 +204,12 @@ class FileManagerService
             return false;
         }
 
+        $realTarget = realpath($target);
+        $realRoot = realpath($root);
+        if ($realTarget === false || $realRoot === false || $realTarget === $realRoot || !str_starts_with(str_replace('\\', '/', $realTarget), str_replace('\\', '/', $realRoot))) {
+            return false;
+        }
+
         if (is_dir($target)) {
             return $this->deleteDirectoryRecursive($target);
         }
@@ -237,6 +243,19 @@ class FileManagerService
 
         $source = $this->resolveFullPath($cleanOld);
         if (!file_exists($source)) {
+            return false;
+        }
+
+        $realSource = realpath($source);
+        $realParent = realpath(dirname($source));
+        $realRoot = realpath($this->resolveFullPath(''));
+        if ($realSource === false || $realParent === false || $realRoot === false) {
+            return false;
+        }
+        $normSrc = str_replace('\\', '/', $realSource);
+        $normParent = str_replace('\\', '/', $realParent);
+        $normRoot = str_replace('\\', '/', $realRoot);
+        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normParent, $normRoot)) {
             return false;
         }
 
@@ -283,6 +302,19 @@ class FileManagerService
             return false;
         }
 
+        $realSource = realpath($source);
+        $realTargetDir = realpath($targetDir);
+        $realRoot = realpath($this->resolveFullPath(''));
+        if ($realSource === false || $realTargetDir === false || $realRoot === false) {
+            return false;
+        }
+        $normSrc = str_replace('\\', '/', $realSource);
+        $normDst = str_replace('\\', '/', $realTargetDir);
+        $normRoot = str_replace('\\', '/', $realRoot);
+        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normDst, $normRoot)) {
+            return false;
+        }
+
         $itemName = basename($source);
         $destination = $targetDir . '/' . $itemName;
 
@@ -312,6 +344,19 @@ class FileManagerService
 
         $targetDir = $this->resolveFullPath($cleanDst);
         if (!is_dir($targetDir)) {
+            return false;
+        }
+
+        $realSource = realpath($source);
+        $realTargetDir = realpath($targetDir);
+        $realRoot = realpath($this->resolveFullPath(''));
+        if ($realSource === false || $realTargetDir === false || $realRoot === false) {
+            return false;
+        }
+        $normSrc = str_replace('\\', '/', $realSource);
+        $normDst = str_replace('\\', '/', $realTargetDir);
+        $normRoot = str_replace('\\', '/', $realRoot);
+        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normDst, $normRoot)) {
             return false;
         }
 
