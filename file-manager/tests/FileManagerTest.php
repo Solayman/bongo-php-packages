@@ -144,7 +144,7 @@ class FileManagerTest extends TestCase
         $backupItemsWithCustom = FileManager::getItems('backup');
         $this->assertCount(3, $backupItemsWithCustom['files']);
         $fileNames = array_map(fn($f) => $f->name, $backupItemsWithCustom['files']);
-        $this->assertContains('custom_renamed.txt', $fileNames);
+        $this->assertTrue(in_array('custom_renamed.txt', $fileNames, true));
     }
 
     public function testDeleteItem(): void
