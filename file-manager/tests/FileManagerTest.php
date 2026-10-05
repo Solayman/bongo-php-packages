@@ -137,6 +137,14 @@ class FileManagerTest extends TestCase
         $this->assertTrue($copiedAgain);
         $backupItemsAfter = FileManager::getItems('backup');
         $this->assertCount(2, $backupItemsAfter['files']);
+
+        // Copy with custom new name
+        $copiedRenamed = FileManager::copyItem('original.txt', 'backup', 'custom_renamed.txt');
+        $this->assertTrue($copiedRenamed);
+        $backupItemsWithCustom = FileManager::getItems('backup');
+        $this->assertCount(3, $backupItemsWithCustom['files']);
+        $fileNames = array_map(fn($f) => $f->name, $backupItemsWithCustom['files']);
+        $this->assertContains('custom_renamed.txt', $fileNames);
     }
 
     public function testDeleteItem(): void
