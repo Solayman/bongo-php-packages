@@ -224,6 +224,31 @@ class BackupTest extends TestCase
         $this->assertSame('app_backup_04.zip', $remaining[1]['filename']);
     }
 
+    public function testFilenameTraversalIsSanitized(): void
+    {
+        $backupDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bongo_test_backup_traversal_' . uniqid();
+        mkdir($backupDir, 0755, true);
+
+        $manager = new BackupManager([
+            'disk' => 'local',
+            'destination_path' => $backupDir,
+            'files' => [
+                'directories' => [],
+            ],
+        ]);
+
+        $res = $manager->run([
+            'db_only' => true,
+            'filename' => '../../traversal_test.zip',
+        ]);
+
+        $this->assertTrue($res->isSuccessful());
+        $this->assertSame('traversal_test.zip', basename($res->path()));
+        $this->assertTrue(str_starts_with(realpath($res->path()), realpath($backupDir)));
+
+        $this->removeDir($backupDir);
+    }
+
     protected function removeDir(string $dir): void
     {
         if (!is_dir($dir)) {
