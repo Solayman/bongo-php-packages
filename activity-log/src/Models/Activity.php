@@ -85,4 +85,102 @@ class Activity extends Model
 
         return $query;
     }
+
+    /**
+     * Get the associated subject model.
+     */
+    public function subject(): ?object
+    {
+        if (array_key_exists('subject', $this->relations)) {
+            return $this->relations['subject'];
+        }
+
+        $type = $this->subject_type;
+        $id = $this->subject_id;
+        if ($type && $id && class_exists($type) && is_subclass_of($type, Model::class)) {
+            $model = $type::find($id);
+            $this->relations['subject'] = $model;
+            return $model;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the associated causer model.
+     */
+    public function causer(): ?object
+    {
+        if (array_key_exists('causer', $this->relations)) {
+            return $this->relations['causer'];
+        }
+
+        $type = $this->causer_type;
+        $id = $this->causer_id;
+        if ($type && $id && class_exists($type) && is_subclass_of($type, Model::class)) {
+            $model = $type::find($id);
+            $this->relations['causer'] = $model;
+            return $model;
+        }
+
+        return null;
+    }
+
+    /**
+     * Batch load polymorphic subjects and causers across an array of Activity records.
+     * Completely eliminates N+1 queries when rendering activity logs or audit feeds.
+     *
+     * @param array<Activity> $activities
+     * @return array<Activity>
+     */
+    public static function loadMorphs(array $activities): array
+    {
+        $groupedSubjects = [];
+        $groupedCausers = [];
+
+        foreach ($activities as $idx => $act) {
+            if (!empty($act->subject_type) && !empty($act->subject_id) && class_exists($act->subject_type)) {
+                $groupedSubjects[$act->subject_type][$act->subject_id][] = $idx;
+            }
+            if (!empty($act->causer_type) && !empty($act->causer_id) && class_exists($act->causer_type)) {
+                $groupedCausers[$act->causer_type][$act->causer_id][] = $idx;
+            }
+        }
+
+        foreach ($groupedSubjects as $class => $idMap) {
+            if (is_subclass_of($class, Model::class)) {
+                $ids = array_keys($idMap);
+                $models = $class::whereIn('id', $ids)->get();
+                if (is_array($models)) {
+                    foreach ($models as $m) {
+                        $mId = (string) $m->id;
+                        if (isset($idMap[$mId])) {
+                            foreach ($idMap[$mId] as $actIdx) {
+                                $activities[$actIdx]->setRelation('subject', $m);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach ($groupedCausers as $class => $idMap) {
+            if (is_subclass_of($class, Model::class)) {
+                $ids = array_keys($idMap);
+                $models = $class::whereIn('id', $ids)->get();
+                if (is_array($models)) {
+                    foreach ($models as $m) {
+                        $mId = (string) $m->id;
+                        if (isset($idMap[$mId])) {
+                            foreach ($idMap[$mId] as $actIdx) {
+                                $activities[$actIdx]->setRelation('causer', $m);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $activities;
+    }
 }

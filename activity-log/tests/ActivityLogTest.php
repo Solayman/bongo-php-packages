@@ -195,5 +195,36 @@ class ActivityLogTest extends TestCase
         $this->assertSame('192.168.1.50', $log->ip_address);
         unset($_SERVER['HTTP_X_FORWARDED_FOR']);
     }
+
+    public function testActivitySubjectAndCauserLoadMorphsNoNPlusOne(): void
+    {
+        $user1 = new TestUser(['name' => 'User One', 'email' => 'one@example.com']);
+        $user1->save();
+        $user2 = new TestUser(['name' => 'User Two', 'email' => 'two@example.com']);
+        $user2->save();
+
+        $article1 = new TestArticle(['title' => 'Article One']);
+        $article1->save();
+        $article2 = new TestArticle(['title' => 'Article Two']);
+        $article2->save();
+
+        $act1 = activity()->performedOn($article1)->causedBy($user1)->log('Published article 1');
+        $act2 = activity()->performedOn($article2)->causedBy($user2)->log('Published article 2');
+
+        // Test individual subject and causer resolution
+        $this->assertSame('Article One', $act1->subject()->title);
+        $this->assertSame('User One', $act1->causer()->name);
+
+        // Test batched polymorphic eager loading (0 N+1 queries)
+        $activities = Activity::whereIn('id', [$act1->id, $act2->id])->get();
+        Activity::loadMorphs($activities);
+
+        $this->assertTrue($activities[0]->relationLoaded('subject'));
+        $this->assertTrue($activities[0]->relationLoaded('causer'));
+        $this->assertSame('Article One', $activities[0]->subject()->title);
+        $this->assertSame('User One', $activities[0]->causer()->name);
+        $this->assertSame('Article Two', $activities[1]->subject()->title);
+        $this->assertSame('User Two', $activities[1]->causer()->name);
+    }
 }
 
