@@ -54,6 +54,11 @@ class FileManager
         return self::service()->moveItem($sourcePath, $destFolder);
     }
 
+    public static function copyItem(string $sourcePath, string $destFolder): bool
+    {
+        return self::service()->copyItem($sourcePath, $destFolder);
+    }
+
     public static function readFile(string $path): string
     {
         return self::service()->readFile($path);

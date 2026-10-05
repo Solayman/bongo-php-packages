@@ -114,6 +114,31 @@ class FileManagerTest extends TestCase
         $this->assertSame('new_name.txt', $archiveItems['files'][0]->name);
     }
 
+    public function testCopyItem(): void
+    {
+        FileManager::saveFile('original.txt', 'file content');
+        FileManager::createFolder('', 'backup');
+
+        $copied = FileManager::copyItem('original.txt', 'backup');
+        $this->assertTrue($copied);
+
+        // Source still exists
+        $rootItems = FileManager::getItems('');
+        $this->assertCount(1, $rootItems['files']);
+        $this->assertSame('original.txt', $rootItems['files'][0]->name);
+
+        // Destination copy exists
+        $backupItems = FileManager::getItems('backup');
+        $this->assertCount(1, $backupItems['files']);
+        $this->assertSame('original.txt', $backupItems['files'][0]->name);
+
+        // Copy again produces duplicate with _copy suffix
+        $copiedAgain = FileManager::copyItem('original.txt', 'backup');
+        $this->assertTrue($copiedAgain);
+        $backupItemsAfter = FileManager::getItems('backup');
+        $this->assertCount(2, $backupItemsAfter['files']);
+    }
+
     public function testDeleteItem(): void
     {
         FileManager::saveFile('delete_me.txt', 'temporary');
