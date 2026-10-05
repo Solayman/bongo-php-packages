@@ -275,19 +275,94 @@ class FileManagerTest extends TestCase
         $this->assertTrue(PathSecurity::isAllowedForUpload('document.pdf'));
 
         // Reject dangerous executables
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.php'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('backdoor.php7'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('exploit.phar'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('script.php.exe'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('malware.exe'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('shell.sh'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('backdoor.phtml'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('gate.cgi'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.py'));
 
         // Reject hidden files and configuration overrides
         $this->assertFalse(PathSecurity::isAllowedForUpload('.htaccess'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('custom.htaccess'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('.env'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('.user.ini'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('config.ini'));
+
+        // Reject null byte injection
+        $this->assertFalse(PathSecurity::isAllowedForUpload("photo.jpg\0.php"));
 
         // Reject multi-extension execution tricks
         $this->assertFalse(PathSecurity::isAllowedForUpload('avatar.php.png'));
         $this->assertFalse(PathSecurity::isAllowedForUpload('file.phtml.jpg'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('test.php7.pdf'));
+    }
+
+    public function testRenameSecurityRejectsBypasses(): void
+    {
+        FileManager::saveFile('test_file.txt', 'sample content');
+
+        // Cannot rename safe file to dangerous executable extension
+        $this->assertFalse(FileManager::renameItem('test_file.txt', 'shell.php'));
+        $this->assertFalse(FileManager::renameItem('test_file.txt', 'malware.exe'));
+        $this->assertFalse(FileManager::renameItem('test_file.txt', '.htaccess'));
+        $this->assertFalse(FileManager::renameItem('test_file.txt', 'backdoor.phar'));
+
+        // Can rename safe file to another safe name
+        $this->assertTrue(FileManager::renameItem('test_file.txt', 'renamed_file.txt'));
+        $files = FileManager::getItems('')['files'];
+        $this->assertSame('renamed_file.txt', $files[0]->name);
+
+        // Can rename existing editable code file to same extension (code editor workflow)
+        FileManager::saveFile('scripts/app.php', '<?php echo 1;');
+        $this->assertTrue(FileManager::renameItem('scripts/app.php', 'index.php'));
+        $this->assertSame('<?php echo 1;', FileManager::readFile('scripts/index.php'));
+    }
+
+    public function testCopySecurityRejectsBypasses(): void
+    {
+        FileManager::saveFile('doc.txt', 'sample text');
+        FileManager::createFolder('', 'target_dir');
+
+        // Cannot copy as blocked extension
+        $this->assertFalse(FileManager::copyItem('doc.txt', 'target_dir', 'shell.php'));
+        $this->assertFalse(FileManager::copyItem('doc.txt', 'target_dir', 'malware.exe'));
+
+        // Can copy as safe name
+        $this->assertTrue(FileManager::copyItem('doc.txt', 'target_dir', 'safe_copy.txt'));
+        $targetFiles = FileManager::getItems('target_dir')['files'];
+        $this->assertSame('safe_copy.txt', $targetFiles[0]->name);
+    }
+
+    public function testSaveAndReadSecurityRestrictions(): void
+    {
+        // Rejects saving non-editable files or hidden configs
+        $this->assertFalse(FileManager::saveFile('exploit.exe', 'binary'));
+        $this->assertFalse(FileManager::saveFile('.env', 'DB_PASSWORD=secret'));
+        $this->assertFalse(FileManager::saveFile('.htaccess', 'SetHandler'));
+
+        // Allows saving valid code files in code editor
+        $this->assertTrue(FileManager::saveFile('scripts/test.php', '<?php echo 123;'));
+        $this->assertSame('<?php echo 123;', FileManager::readFile('scripts/test.php'));
+
+        // Reading non-editable file throws exception
+        FileManager::saveFile('valid.txt', 'some text');
+        $this->assertSame('some text', FileManager::readFile('valid.txt'));
+    }
+
+    public function testFolderCreationSanitization(): void
+    {
+        // Folder name is sanitized to safe characters
+        $this->assertTrue(FileManager::createFolder('', 'my<script>folder'));
+        $folders = FileManager::getItems('')['folders'];
+        $folderNames = array_map(fn($f) => $f->name, $folders);
+        $this->assertTrue(in_array('my_script_folder', $folderNames, true));
+
+        // Hidden folder rejected
+        $this->assertFalse(FileManager::createFolder('', '.hidden_dir'));
     }
 
     public function testScriptHelperEndpoint(): void

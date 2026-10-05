@@ -1143,6 +1143,26 @@
                 return meta && meta.content ? meta.content : this.csrfToken;
             },
 
+            escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            },
+
+            escapeJs(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "\\'")
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n')
+                    .replace(/\r/g, '\\r');
+            },
+
             init() {
                 this.initCodeEditor();
                 this.setupDragAndDrop();
@@ -1284,7 +1304,7 @@
                     const li = document.createElement('li');
                     const div = document.createElement('div');
                     div.className = 'folder-node' + (this.currentPath === node.path ? ' active' : '');
-                    div.innerHTML = `<i class="fa-solid fa-folder"></i> <span>${node.name}</span>`;
+                    div.innerHTML = `<i class="fa-solid fa-folder"></i> <span>${this.escapeHtml(node.name)}</span>`;
                     div.onclick = (e) => {
                         e.stopPropagation();
                         this.navigateTo(node.path);
@@ -1430,7 +1450,7 @@
                     card.draggable = true;
                     card.innerHTML = `
                         <div class="card-thumb">${folderSvg}</div>
-                        <div class="card-footer"><span class="card-name" title="${f.name}">${f.name}</span></div>
+                        <div class="card-footer"><span class="card-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</span></div>
                     `;
                     card.onclick = () => this.selectItem(f, card);
                     card.ondblclick = () => this.navigateTo(f.path);
@@ -1490,7 +1510,7 @@
 
                     card.innerHTML = `
                         <div class="card-thumb">${previewContent}</div>
-                        <div class="card-footer"><span class="card-name" title="${f.name}">${f.name}</span></div>
+                        <div class="card-footer"><span class="card-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</span></div>
                     `;
                     card.onclick = () => this.selectItem(f, card);
                     card.ondblclick = () => this.openItem(f);
@@ -1541,22 +1561,22 @@
                 folders.forEach(f => {
                     html += `
                         <tr class="list-row" draggable="true"
-                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${f.path}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
+                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${this.escapeJs(f.path)}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
                             ondragend="this.classList.remove('is-dragging');"
                             ondragover="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.add('drop-target'); }"
                             ondragleave="this.classList.remove('drop-target');"
-                            ondrop="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.remove('drop-target'); const src = event.dataTransfer.getData('application/x-bongo-item'); app.moveItemToFolder(src, '${f.path}'); }"
-                            onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.navigateTo('${f.path}')">
-                            <td><i class="fa-solid fa-folder" style="color: #38bdf8; margin-right: 8px;"></i> <strong>${f.name}</strong></td>
+                            ondrop="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.remove('drop-target'); const src = event.dataTransfer.getData('application/x-bongo-item'); app.moveItemToFolder(src, '${this.escapeJs(f.path)}'); }"
+                            onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.navigateTo('${this.escapeJs(f.path)}')">
+                            <td><i class="fa-solid fa-folder" style="color: #38bdf8; margin-right: 8px;"></i> <strong>${this.escapeHtml(f.name)}</strong></td>
                             <td>—</td>
                             <td>Folder</td>
-                            <td>${f.updated_at || '—'}</td>
+                            <td>${this.escapeHtml(f.updated_at || '—')}</td>
                             <td style="text-align: right;">
                                 <div class="item-action-btns" style="justify-content: flex-end;">
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${f.path}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${f.path}', '${f.name}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${f.path}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
-                                    <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${f.path}', '${f.name}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${this.escapeJs(f.path)}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${this.escapeJs(f.path)}', '${this.escapeJs(f.name)}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${this.escapeJs(f.path)}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
+                                    <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${this.escapeJs(f.path)}', '${this.escapeJs(f.name)}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -1572,21 +1592,21 @@
 
                     html += `
                         <tr class="list-row" draggable="true"
-                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${f.path}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
+                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${this.escapeJs(f.path)}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
                             ondragend="this.classList.remove('is-dragging');"
                             onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.openItem(${JSON.stringify(f).replace(/"/g, '&quot;')})">
-                            <td>${icon} <span>${f.name}</span></td>
-                            <td>${f.size_human}</td>
-                            <td>${(f.extension || f.type).toUpperCase()}</td>
-                            <td>${f.updated_at || '—'}</td>
+                            <td>${icon} <span>${this.escapeHtml(f.name)}</span></td>
+                            <td>${this.escapeHtml(f.size_human)}</td>
+                            <td>${this.escapeHtml((f.extension || f.type).toUpperCase())}</td>
+                            <td>${this.escapeHtml(f.updated_at || '—')}</td>
                             <td style="text-align: right;">
                                 <div class="item-action-btns" style="justify-content: flex-end;">
                                     <a class="action-icon-btn" href="/${this.prefix}/download?path=${encodeURIComponent(f.path)}" title="Download" onclick="event.stopPropagation();"><i class="fa-solid fa-download"></i></a>
                                     ${f.type === 'code' ? `<button class="action-icon-btn" onclick="event.stopPropagation(); app.openCodeEditor(${JSON.stringify(f).replace(/"/g, '&quot;')})" title="Edit Code"><i class="fa-solid fa-code"></i></button>` : ''}
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${f.path}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${f.path}', '${f.name}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${f.path}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
-                                    <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${f.path}', '${f.name}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptCopy('${this.escapeJs(f.path)}')" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptRename('${this.escapeJs(f.path)}', '${this.escapeJs(f.name)}')" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="action-icon-btn" onclick="event.stopPropagation(); app.promptMove('${this.escapeJs(f.path)}')" title="Move"><i class="fa-solid fa-arrows-up-down-left-right"></i></button>
+                                    <button class="action-icon-btn danger" onclick="event.stopPropagation(); app.promptDelete('${this.escapeJs(f.path)}', '${this.escapeJs(f.name)}')" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -1617,7 +1637,7 @@
                 if (this.selectedItem) {
                     info.innerHTML = `
                         <i class="fa-solid fa-check-circle" style="color: var(--selected-border);"></i>
-                        <span><strong>${this.selectedItem.name}</strong> (${this.selectedItem.is_dir ? 'Folder' : this.selectedItem.size_human})</span>
+                        <span><strong>${this.escapeHtml(this.selectedItem.name)}</strong> (${this.selectedItem.is_dir ? 'Folder' : this.escapeHtml(this.selectedItem.size_human)})</span>
                     `;
                     if (!this.selectedItem.is_dir && (this.selectedItem.type === 'image' || this.selectedItem.type === 'code')) {
                         btnPrev.style.display = 'inline-flex';
@@ -1831,7 +1851,7 @@
                     const pathCopy = accum;
                     bc.innerHTML += `
                         <span class="crumb-separator">/</span>
-                        <span class="crumb-item" onclick="app.navigateTo('${pathCopy}')">${p}</span>
+                        <span class="crumb-item" onclick="app.navigateTo('${this.escapeJs(pathCopy)}')">${this.escapeHtml(p)}</span>
                     `;
                 });
             },
@@ -1920,7 +1940,7 @@
 
                 const populateOptions = (nodes, prefix = '') => {
                     nodes.forEach(n => {
-                        select.innerHTML += `<option value="${n.path}">${prefix}/${n.name}</option>`;
+                        select.innerHTML += `<option value="${this.escapeHtml(n.path)}">${this.escapeHtml(prefix)}/${this.escapeHtml(n.name)}</option>`;
                         if (n.children && n.children.length > 0) {
                             populateOptions(n.children, prefix + '/' + n.name);
                         }
@@ -1967,7 +1987,7 @@
 
                 const populateOptions = (nodes, prefix = '') => {
                     nodes.forEach(n => {
-                        select.innerHTML += `<option value="${n.path}">${prefix}/${n.name}</option>`;
+                        select.innerHTML += `<option value="${this.escapeHtml(n.path)}">${this.escapeHtml(prefix)}/${this.escapeHtml(n.name)}</option>`;
                         if (n.children && n.children.length > 0) {
                             populateOptions(n.children, prefix + '/' + n.name);
                         }

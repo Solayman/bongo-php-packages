@@ -56,10 +56,19 @@ class PathSecurity
      */
     public static function isEditable(string $filename): bool
     {
+        if (str_contains($filename, "\0")) {
+            return false;
+        }
+
+        $filename = basename(str_replace('\\', '/', $filename));
+        if ($filename === '' || str_starts_with($filename, '.')) {
+            return false;
+        }
+
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $valid = function_exists('config')
-            ? (array) config('filemanager.valid_code_extensions', ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml', 'env'])
-            : ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml', 'env'];
+            ? (array) config('filemanager.valid_code_extensions', ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml'])
+            : ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml'];
 
         return in_array($ext, $valid, true);
     }
@@ -92,7 +101,11 @@ class PathSecurity
      */
     public static function isAllowedForUpload(string $filename): bool
     {
-        $filename = basename($filename);
+        if (str_contains($filename, "\0")) {
+            return false;
+        }
+
+        $filename = basename(str_replace('\\', '/', $filename));
         if ($filename === '' || str_starts_with($filename, '.')) {
             return false;
         }
@@ -104,18 +117,24 @@ class PathSecurity
 
         // Dangerous executable extensions and server scripts always blocked
         $blocked = [
-            'exe', 'dll', 'so', 'phtml', 'phar', 'cgi', 'pl', 'asp', 'aspx', 'jsp',
-            'sh', 'bash', 'cmd', 'bat', 'com', 'vbs', 'scr', 'msi', 'hta', 'py'
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'pht', 'phps', 'phtml', 'phar', 'pgif', 'inc',
+            'htaccess', 'htpasswd', 'ini', 'user.ini', 'env', 'conf', 'config',
+            'exe', 'dll', 'so', 'dylib', 'bin', 'app', 'com', 'scr', 'msi', 'msp', 'hta', 'cpl', 'gadget',
+            'asp', 'aspx', 'axd', 'asmx', 'ashx', 'asx', 'cfm', 'cfc', 'jsp', 'jspx', 'jsw', 'jsv', 'jspf',
+            'cgi', 'pl', 'py', 'pyc', 'pyo', 'rb',
+            'sh', 'bash', 'zsh', 'csh', 'ksh', 'cmd', 'bat', 'ps1', 'ps2', 'ps1xml', 'ps2xml', 'psc1', 'psc2',
+            'vbs', 'vbe', 'ws', 'wsf', 'wsc', 'wsh', 'reg'
         ];
         if (in_array($ext, $blocked, true)) {
             return false;
         }
 
-        // Multi-extension execution bypass protection (e.g. avatar.php.jpg)
-        if (preg_match('/\.(php|phtml|phar|cgi|pl|asp|aspx|jsp|sh|py)\./i', $filename)) {
+        // Multi-extension execution bypass protection (e.g. avatar.php.jpg, test.php7.png)
+        if (preg_match('/\.(php[0-9]?|phtml|phar|pht|phps|pgif|asp|aspx|jsp|jspx|cgi|pl|py|sh|bash|cmd|bat|exe|htaccess)\./i', $filename)) {
             return false;
         }
 
         return true;
     }
 }
+

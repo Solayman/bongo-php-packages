@@ -21,7 +21,8 @@ spl_autoload_register(function (string $class): void {
             require_once $file;
         }
     }
-});
+}, true, true);
+
 
 $target = $argv[1] ?? 'all';
 $exitCode = 0;
