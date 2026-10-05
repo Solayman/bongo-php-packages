@@ -15,6 +15,10 @@ class FileManagerController
      */
     public function index(Request $request): string
     {
+        if (!headers_sent()) {
+            header('Permissions-Policy: unload=*');
+        }
+
         $viewPath = __DIR__ . '/../../views/index.php';
         if (file_exists($viewPath)) {
             extract([

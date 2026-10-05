@@ -74,9 +74,22 @@ Add a button to your form to let users pick files from the file manager:
 ```javascript
 tinymce.init({
     selector: 'textarea.editor',
+    relative_urls: false,
+    remove_script_host: false,
+    convert_urls: true,
+    setup: function (editor) {
+        editor.on('init', function () {
+            const body = editor.getBody();
+            if (body) {
+                body.setAttribute('data-gramm', 'false');
+                body.setAttribute('data-gramm_editor', 'false');
+                body.setAttribute('data-enable-grammarly', 'false');
+            }
+        });
+    },
     file_picker_callback: function (callback, value, meta) {
         var x = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
-        var y = window.innerHeight || document.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
+        var y = window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight;
 
         var cmsURL = '/filemanager?type=' + (meta.filetype == 'image' ? 'image' : 'file') + '&callback=1';
 
