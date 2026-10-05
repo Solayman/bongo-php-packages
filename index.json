@@ -261,6 +261,58 @@
           }
         }
       }
+    },
+    "captcha": {
+      "name": "captcha",
+      "latest": "1.0.0",
+      "description": "Anti-bot human verification suite with Cloudflare Turnstile, Google reCAPTCHA v2/v3, hCaptcha, and pure-PHP offline math/image challenges",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "aamarpay": {
+      "name": "aamarpay",
+      "latest": "1.0.0",
+      "description": "AamarPay payment gateway for Bangladesh with sandbox/live modes, MFS support (bKash, Nagad, Rocket), card processing, and TrxCheck verification",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "telegram": {
+      "name": "telegram",
+      "latest": "1.0.0",
+      "description": "Real-time Telegram Bot notifications, system alerts, channel broadcasts, and media messaging with pure-PHP Bot API",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "bangla-tools": {
+      "name": "bangla-tools",
+      "latest": "1.0.0",
+      "description": "Bengali linguistic & localization toolkit with Bengali numerals, number-to-words, South Asian Taka currency, Bongabdo calendar, and Unicode normalizer",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

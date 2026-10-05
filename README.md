@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-174%20passed%20(706%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-208%20passed%20(853%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **174 automated unit and integration tests (706 assertions)**.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **208 automated unit and integration tests (853 assertions)** across 24 official packages.
 
 ---
 
@@ -18,12 +18,16 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`sslcommerz`](#1-sslcommerz-v100) | Payments | 1.0.0 | SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, and CLI verification | `php bongo add sslcommerz` |
 | [`bkash`](#2-bkash-v100) | Payments | 1.0.0 | bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, and CLI verification | `php bongo add bkash` |
 | [`nagad`](#3-nagad-v100) | Payments | 1.0.0 | Nagad MFS payment gateway with native OpenSSL RSA-2048 encryption, two-step checkout, and CLI key generator | `php bongo add nagad` |
+| [`aamarpay`](#22-aamarpay-v100) | Payments | 1.0.0 | AamarPay payment gateway for Bangladesh with sandbox/live modes, MFS support (bKash, Nagad, Rocket), and TrxCheck verification | `php bongo add aamarpay` |
 | [`stripe`](#4-stripe-v100) | Payments | 1.0.0 | Stripe international payment gateway with Checkout Sessions, Payment Intents, refunds, and HMAC-SHA256 webhooks | `php bongo add stripe` |
 | [`paypal`](#5-paypal-v100) | Payments | 1.0.0 | PayPal REST API v2 Checkout payment gateway with payment capture, authorization holds, refunds, and verified webhooks | `php bongo add paypal` |
 | [`two-factor`](#6-two-factor-v100) | Security | 1.0.0 | RFC 6238 TOTP two-factor authentication with pure-PHP SVG QR codes, hashed backup recovery codes, and middleware | `php bongo add two-factor` |
+| [`captcha`](#21-captcha-v100) | Security | 1.0.0 | Universal anti-bot verification suite (Cloudflare Turnstile, Google reCAPTCHA v2/v3, hCaptcha, pure-PHP math & GD image challenges) | `php bongo add captcha` |
 | [`social-login`](#7-social-login-v100) | Security | 1.0.0 | OAuth 2.0 social authentication for Google, GitHub, and Facebook with CSRF protection and private email resolution | `php bongo add social-login` |
 | [`permission`](#8-permission-v100) | Security | 1.0.0 | Role-Based Access Control (RBAC) and permissions management with `HasRoles` trait, super-admin bypass, and CLI tools | `php bongo add permission` |
 | [`sms`](#9-sms-v100) | Communications | 1.0.0 | Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS) with 6-digit phone OTP generation and throttling | `php bongo add sms` |
+| [`telegram`](#23-telegram-v100) | Communications | 1.0.0 | Real-time Telegram Bot notifications, rich system alerts, channel broadcasts, and media messaging with pure-PHP Bot API | `php bongo add telegram` |
+| [`bangla-tools`](#24-bangla-tools-v100) | Localization | 1.0.0 | Bengali linguistic toolkit (Bangla numerals, number-to-words, South Asian Taka currency, Bongabdo calendar, and Unicode normalizer) | `php bongo add bangla-tools` |
 | [`s3`](#10-s3-v100) | Storage | 1.0.0 | AWS SigV4 object storage disk for Amazon S3, DigitalOcean Spaces, Cloudflare R2, and MinIO with presigned temporary URLs | `php bongo add s3` |
 | [`ftp`](#11-ftp-v100) | Storage | 1.0.0 | Zero-dependency FTP and FTPS filesystem driver extending Bongo's `Storage` facade with pure-PHP socket transport | `php bongo add ftp` |
 | [`file-manager`](#12-file-manager-v100) | Storage & UI | 1.0.0 | Zero-dependency web file manager, media lightbox, WYSIWYG picker, and embedded CodeMirror 5 code editor | `php bongo add file-manager` |
@@ -333,6 +337,64 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 
 ---
 
+### 21. `captcha` (v1.0.0)
+**Universal Anti-Bot & Human Verification Suite**
+- **Problem Solved:** Automated spam, brute-force form submission, and bots on login, registration, and checkout without mandating external cloud dependencies.
+- **Architecture & Highlights:**
+  - Multi-driver engine:
+    - **Cloudflare Turnstile:** frictionless modern anti-bot protection with theme and size controls.
+    - **Google reCAPTCHA:** supports both v2 (checkbox) and v3 (invisible score-based with configurable threshold).
+    - **hCaptcha:** privacy-first alternative.
+    - **Math Captcha:** zero-dependency session math problems (`8 + 5 = ?`), works offline and in local dev.
+    - **Image Captcha:** pure-PHP GD distorted challenge images rendered via Base64 data URI (no dedicated image route required).
+  - Cryptographic single-use replay protection and 10-minute session expiry.
+  - Template directives: `@captcha` and `@captchascript`.
+  - HTTP middleware: `VerifyCaptcha`.
+- **Install:** `php bongo add captcha`
+
+---
+
+### 22. `aamarpay` (v1.0.0)
+**AamarPay Payment Gateway for Bangladesh**
+- **Problem Solved:** Bangladeshi merchants requiring seamless multi-channel checkout across bKash, Nagad, Rocket, Upay, Visa, MasterCard, and local banks.
+- **Architecture & Highlights:**
+  - Pure-PHP API v2 client using native streams/cURL without Composer wrappers.
+  - Dual environment switching (`sandbox` vs `live`) via `.env`.
+  - Server-to-server transaction validation with `AamarPay::verify($tranId)`.
+  - Pre-built views for checkout, success, fail, and cancel.
+  - Optional database audit trail in `aamarpay_transactions` table.
+- **CLI Utilities:** `php bongo aamarpay:check` (tests credentials and gateway health).
+- **Install:** `php bongo add aamarpay`
+
+---
+
+### 23. `telegram` (v1.0.0)
+**Real-Time Telegram Bot Notifications & System Alerts**
+- **Problem Solved:** Instant notification delivery for order events, payment alerts, exception tracking, and devops alarms directly to private Telegram chats or channels.
+- **Architecture & Highlights:**
+  - Pure-PHP Telegram Bot API client.
+  - Formatted HTML/Markdown alerts with emojis, app environment, timestamps, and collapsible JSON payloads.
+  - Testing fake: `Telegram::fake()` allows complete unit testing without hitting the network.
+  - Global helpers: `telegram_notify()` and `telegram_alert()`.
+- **CLI Utilities:** `php bongo telegram:send "Hello"`, `php bongo telegram:test`.
+- **Install:** `php bongo add telegram`
+
+---
+
+### 24. `bangla-tools` (v1.0.0)
+**Bengali Localization & Linguistic Toolkit**
+- **Problem Solved:** Formatting numbers, dates, currency, and SEO slugs into authentic Bengali representation for Bangladeshi applications.
+- **Architecture & Highlights:**
+  - **Digit Converter:** bidirectional English <-> Bengali digit mapping (`12345` <-> `১২৩৪৫`).
+  - **Number to Words:** converts integers and decimals to Bengali words (e.g. `150` -> `একশত পঞ্চাশ টাকা মাত্র`, supporting কোটি, লাখ, হাজার, শত, পয়সা).
+  - **Bangladeshi Taka Notation:** South Asian grouping (`1,50,000.00` ৳ / `৳ ১,৫০,০০০.০০`).
+  - **Bongabdo Calendar Converter:** converts Gregorian dates to Bengali calendar (day, month বৈশাখ-চৈত্র, season গ্রীষ্ম-বসন্ত, Bongabdo year, weekday).
+  - **Unicode Normalizer & Slug:** cleans corrupted zero-width spaces (`\u200B`) and creates search-engine friendly Bengali slugs (`আমার-সোনার-বাংলা`).
+  - Template directives: `@bangla_number`, `@bangla_date`, `@taka`.
+- **Install:** `php bongo add bangla-tools`
+
+---
+
 ## 🛠️ Package Management CLI Reference
 
 All packages integrate directly with the Bongo CLI:
@@ -370,11 +432,11 @@ php bongo package:test <package-name>
 The package suite includes an automated test runner (`run_tests.php`) using Bongo's built-in testing engine via the `BongoMvc` junction:
 
 ```bash
-# Run tests across all 20 packages
+# Run tests across all 24 packages
 php run_tests.php
 
 # Expected result:
-# Tests: 174 passed (706 assertions) across 20 packages
+# Tests: 208 passed (853 assertions) across 24 packages
 ```
 
 ---
