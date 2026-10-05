@@ -62,8 +62,7 @@ return [
 
     'valid_code_extensions' => [
         'php', 'js', 'ts', 'json', 'css', 'scss', 'html', 'htm',
-        'sql', 'md', 'txt', 'xml', 'yml', 'yaml', 'env', 'htaccess',
-        'log', 'sh', 'bat', 'csv'
+        'sql', 'md', 'txt', 'xml', 'yml', 'yaml', 'log', 'csv'
     ],
 
     'valid_document_extensions' => [

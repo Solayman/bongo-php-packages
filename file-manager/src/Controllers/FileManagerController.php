@@ -259,6 +259,14 @@ class FileManagerController
     {
         $path = (string) ($request->query('path') ?? '');
         $cleanPath = PathSecurity::sanitize($path);
+        if ($cleanPath === '' || str_starts_with(basename($cleanPath), '.')) {
+            if (!headers_sent()) {
+                http_response_code(404);
+            }
+            echo "File not found.";
+            return;
+        }
+
         $fullPath = FileManager::service()->resolveFullPath($cleanPath);
 
         if (!is_file($fullPath)) {
@@ -292,6 +300,14 @@ class FileManagerController
     {
         $path = (string) ($request->query('path') ?? '');
         $cleanPath = PathSecurity::sanitize($path);
+        if ($cleanPath === '' || str_starts_with(basename($cleanPath), '.')) {
+            if (!headers_sent()) {
+                http_response_code(404);
+            }
+            echo "Image not found.";
+            return;
+        }
+
         $fullPath = FileManager::service()->resolveFullPath($cleanPath);
 
         if (!is_file($fullPath) || !PathSecurity::isImage($fullPath)) {
@@ -397,6 +413,11 @@ class FileManagerController
             header('Content-Length: ' . $size);
             header('Cache-Control: public, max-age=86400');
             header('ETag: ' . $etag);
+            header('X-Content-Type-Options: nosniff');
+
+            if ($detectedMime === 'image/svg+xml' || str_ends_with(strtolower($filePath), '.svg')) {
+                header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'");
+            }
 
             if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
                 http_response_code(304);
