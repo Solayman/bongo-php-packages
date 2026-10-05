@@ -181,6 +181,11 @@
         .folder-node:hover {
             background: #edf2f7;
         }
+        .folder-node.drop-target {
+            background: #e0f2fe !important;
+            color: #0369a1 !important;
+            outline: 2px dashed #0284c7;
+        }
         .folder-node.active {
             background: #dfe4ea;
             color: #1e293b;
@@ -297,6 +302,14 @@
         .file-card.selected {
             border: 2.5px solid var(--selected-border) !important;
             box-shadow: 0 0 0 1px var(--selected-border) !important;
+        }
+        .file-card.drop-target, .list-row.drop-target {
+            background: #e0f2fe !important;
+            border: 2px dashed #0284c7 !important;
+            outline: 2px dashed #0284c7;
+        }
+        .file-card.is-dragging, .list-row.is-dragging {
+            opacity: 0.45;
         }
 
         .card-thumb {
@@ -808,7 +821,10 @@
             <div class="sidebar-section-title">Directories</div>
             <ul class="folder-tree" id="rootTree">
                 <li>
-                    <div class="folder-node active" id="node-root" onclick="app.navigateTo('')">
+                    <div class="folder-node active" id="node-root" onclick="app.navigateTo('')"
+                         ondragover="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.add('drop-target'); }"
+                         ondragleave="this.classList.remove('drop-target');"
+                         ondrop="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.remove('drop-target'); const src = event.dataTransfer.getData('application/x-bongo-item'); app.moveItemToFolder(src, ''); }">
                         <i class="fa-solid fa-folder-open"></i>
                         <span>Files</span>
                     </div>
@@ -1123,6 +1139,10 @@
 
                 ['dragenter', 'dragover'].forEach(name => {
                     workspace.addEventListener(name, (e) => {
+                        // If dragging an internal file/folder inside file manager, don't show upload overlay
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            return;
+                        }
                         e.preventDefault();
                         overlay.classList.add('active');
                     });
@@ -1130,6 +1150,10 @@
 
                 ['dragleave', 'drop'].forEach(name => {
                     workspace.addEventListener(name, (e) => {
+                        // Internal drop handled by target folder element
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            return;
+                        }
                         e.preventDefault();
                         if (e.type === 'drop') {
                             overlay.classList.remove('active');
@@ -1142,6 +1166,45 @@
                         }
                     });
                 });
+            },
+
+            async moveItemToFolder(sourcePath, targetFolder) {
+                if (!sourcePath) return;
+                if (sourcePath === targetFolder) return;
+
+                // Check if target is a subfolder of source (cannot move folder inside itself)
+                if (targetFolder && (targetFolder === sourcePath || targetFolder.startsWith(sourcePath + '/'))) {
+                    this.showToast('Cannot move a folder inside itself.', 'error');
+                    return;
+                }
+
+                // If already in that folder, do nothing
+                const parentOfSource = sourcePath.includes('/') ? sourcePath.substring(0, sourcePath.lastIndexOf('/')) : '';
+                if (parentOfSource === targetFolder) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('path', sourcePath);
+                formData.append('target', targetFolder);
+
+                try {
+                    const res = await fetch(`/${this.prefix}/move`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': this.getCsrfToken() },
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        this.showToast('Item moved successfully.', 'success');
+                        this.refresh();
+                        this.loadTree();
+                    } else {
+                        this.showToast(data.message || 'Failed to move item.', 'error');
+                    }
+                } catch (err) {
+                    this.showToast('Failed to move item: ' + err.message, 'error');
+                }
             },
 
             async loadTree() {
@@ -1167,6 +1230,28 @@
                         e.stopPropagation();
                         this.navigateTo(node.path);
                     };
+
+                    // Tree node as drop target
+                    div.ondragover = (e) => {
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            div.classList.add('drop-target');
+                        }
+                    };
+                    div.ondragleave = () => {
+                        div.classList.remove('drop-target');
+                    };
+                    div.ondrop = (e) => {
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            div.classList.remove('drop-target');
+                            const sourcePath = e.dataTransfer.getData('application/x-bongo-item');
+                            this.moveItemToFolder(sourcePath, node.path);
+                        }
+                    };
+
                     li.appendChild(div);
 
                     if (node.children && node.children.length > 0) {
@@ -1283,12 +1368,45 @@
                 folders.forEach(f => {
                     const card = document.createElement('div');
                     card.className = 'file-card';
+                    card.draggable = true;
                     card.innerHTML = `
                         <div class="card-thumb">${folderSvg}</div>
                         <div class="card-footer"><span class="card-name" title="${f.name}">${f.name}</span></div>
                     `;
                     card.onclick = () => this.selectItem(f, card);
                     card.ondblclick = () => this.navigateTo(f.path);
+
+                    // Drag source
+                    card.ondragstart = (e) => {
+                        e.dataTransfer.setData('application/x-bongo-item', f.path);
+                        e.dataTransfer.effectAllowed = 'move';
+                        card.classList.add('is-dragging');
+                    };
+                    card.ondragend = () => {
+                        card.classList.remove('is-dragging');
+                    };
+
+                    // Drop target (move item into this folder)
+                    card.ondragover = (e) => {
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            card.classList.add('drop-target');
+                        }
+                    };
+                    card.ondragleave = () => {
+                        card.classList.remove('drop-target');
+                    };
+                    card.ondrop = (e) => {
+                        if (e.dataTransfer && e.dataTransfer.types.includes('application/x-bongo-item')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            card.classList.remove('drop-target');
+                            const sourcePath = e.dataTransfer.getData('application/x-bongo-item');
+                            this.moveItemToFolder(sourcePath, f.path);
+                        }
+                    };
+
                     container.appendChild(card);
                 });
 
@@ -1296,6 +1414,7 @@
                 files.forEach(f => {
                     const card = document.createElement('div');
                     card.className = 'file-card';
+                    card.draggable = true;
                     let previewContent = '';
 
                     if (f.type === 'image' && f.thumb_url) {
@@ -1316,6 +1435,17 @@
                     `;
                     card.onclick = () => this.selectItem(f, card);
                     card.ondblclick = () => this.openItem(f);
+
+                    // Drag source
+                    card.ondragstart = (e) => {
+                        e.dataTransfer.setData('application/x-bongo-item', f.path);
+                        e.dataTransfer.effectAllowed = 'move';
+                        card.classList.add('is-dragging');
+                    };
+                    card.ondragend = () => {
+                        card.classList.remove('is-dragging');
+                    };
+
                     container.appendChild(card);
                 });
             },
@@ -1351,7 +1481,13 @@
 
                 folders.forEach(f => {
                     html += `
-                        <tr class="list-row" onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.navigateTo('${f.path}')">
+                        <tr class="list-row" draggable="true"
+                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${f.path}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
+                            ondragend="this.classList.remove('is-dragging');"
+                            ondragover="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.add('drop-target'); }"
+                            ondragleave="this.classList.remove('drop-target');"
+                            ondrop="if(event.dataTransfer && event.dataTransfer.types.includes('application/x-bongo-item')) { event.preventDefault(); event.stopPropagation(); this.classList.remove('drop-target'); const src = event.dataTransfer.getData('application/x-bongo-item'); app.moveItemToFolder(src, '${f.path}'); }"
+                            onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.navigateTo('${f.path}')">
                             <td><i class="fa-solid fa-folder" style="color: #38bdf8; margin-right: 8px;"></i> <strong>${f.name}</strong></td>
                             <td>—</td>
                             <td>Folder</td>
@@ -1375,7 +1511,10 @@
                     else if (f.type === 'archive') icon = '<i class="fa-solid fa-file-zipper" style="color: #8b5cf6; margin-right: 8px;"></i>';
 
                     html += `
-                        <tr class="list-row" onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.openItem(${JSON.stringify(f).replace(/"/g, '&quot;')})">
+                        <tr class="list-row" draggable="true"
+                            ondragstart="event.dataTransfer.setData('application/x-bongo-item', '${f.path}'); event.dataTransfer.effectAllowed = 'move'; this.classList.add('is-dragging');"
+                            ondragend="this.classList.remove('is-dragging');"
+                            onclick="app.selectItem(${JSON.stringify(f).replace(/"/g, '&quot;')}, this)" ondblclick="app.openItem(${JSON.stringify(f).replace(/"/g, '&quot;')})">
                             <td>${icon} <span>${f.name}</span></td>
                             <td>${f.size_human}</td>
                             <td>${(f.extension || f.type).toUpperCase()}</td>
