@@ -82,13 +82,30 @@ trait HasPermissions
     {
         $permissions = is_array($permissions) ? $permissions : [$permissions];
         $guard = $this->guard_name ?? 'web';
+        $names = [];
+        $modelIds = [];
 
         foreach ($permissions as $perm) {
-            $name = is_string($perm) ? $perm : $perm->name;
-            $permModel = PermissionModel::findByName($name, $guard);
-            if ($permModel) {
-                $this->permissions()->detach($permModel->id);
+            if ($perm instanceof PermissionModel) {
+                $modelIds[] = $perm->id;
+            } elseif (is_string($perm) && trim($perm) !== '') {
+                $names[] = trim($perm);
             }
+        }
+
+        if (!empty($names)) {
+            $found = PermissionModel::where('guard_name', $guard)
+                ->whereIn('name', array_values(array_unique($names)))
+                ->get();
+            if (is_array($found)) {
+                foreach ($found as $m) {
+                    $modelIds[] = $m->id;
+                }
+            }
+        }
+
+        foreach (array_unique($modelIds) as $id) {
+            $this->permissions()->detach($id);
         }
 
         $this->relations = [];

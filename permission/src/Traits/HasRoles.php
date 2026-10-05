@@ -100,13 +100,30 @@ trait HasRoles
     {
         $roles = is_array($roles) ? $roles : [$roles];
         $guard = $this->guard_name ?? 'web';
+        $names = [];
+        $modelIds = [];
 
         foreach ($roles as $role) {
-            $name = is_string($role) ? $role : $role->name;
-            $roleModel = Role::findByName($name, $guard);
-            if ($roleModel) {
-                $this->roles()->detach($roleModel->id);
+            if ($role instanceof Role) {
+                $modelIds[] = $role->id;
+            } elseif (is_string($role) && trim($role) !== '') {
+                $names[] = trim($role);
             }
+        }
+
+        if (!empty($names)) {
+            $found = Role::where('guard_name', $guard)
+                ->whereIn('name', array_values(array_unique($names)))
+                ->get();
+            if (is_array($found)) {
+                foreach ($found as $m) {
+                    $modelIds[] = $m->id;
+                }
+            }
+        }
+
+        foreach (array_unique($modelIds) as $id) {
+            $this->roles()->detach($id);
         }
 
         $this->relations = [];
