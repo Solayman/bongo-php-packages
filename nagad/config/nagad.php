@@ -34,4 +34,7 @@ return [
     |
     */
     'callback_url'         => env('NAGAD_CALLBACK_URL', '/nagad/callback'),
+
+    // POST /nagad/pay takes order_id and amount from the browser: demo/testing only
+    'demo_checkout'        => (bool) env('NAGAD_DEMO_CHECKOUT', false),
 ];

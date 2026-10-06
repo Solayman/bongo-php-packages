@@ -93,6 +93,10 @@ The package automatically fires standard Bongo framework events on verification:
 - `payment.failed`: Dispatched when transaction fails or is declined.
 - `payment.cancelled`: Dispatched when the customer cancels checkout on the Nagad portal.
 
+Each event fires **once** per payment status change: refreshing the callback page or replaying the link does not fire `payment.success` again. The status always comes from Nagad's verify API (the `status` in the callback URL is ignored), a successful payment is never changed back, and the paid amount must equal the amount stored by `createPayment()` (otherwise `AMOUNT_MISMATCH` + `payment.failed`). Events need the `nagad_transactions` table (run the migrations).
+
+`POST /nagad/pay` takes `order_id` and `amount` from the browser, so it is **off** unless `NAGAD_DEMO_CHECKOUT=true` (testing only). In your app, call `createPayment()` from your own controller with the amount of the order loaded on the server.
+
 Listen to events in `config/bootstrap.php` or your service provider:
 ```php
 use System\Events\Event;

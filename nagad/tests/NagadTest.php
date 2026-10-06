@@ -6,6 +6,9 @@ use Bongo\Packages\Nagad\Controllers\NagadController;
 use Bongo\Packages\Nagad\Nagad;
 use InvalidArgumentException;
 use RuntimeException;
+use System\Database\DB;
+use System\Database\Schema\Schema;
+use System\Events\Event;
 use System\Http\Request;
 use System\Testing\TestCase;
 
@@ -216,53 +219,151 @@ class NagadTest extends TestCase
         $this->assertSame('01711223344', $verified['client_mobile_no']);
     }
 
-    public function testVerifyPaymentCancelledAndFailed(): void
+    private function gateway(): Nagad
     {
-        $gateway = new Nagad([
+        return new Nagad([
             'merchant_id'          => 'merchant_123',
             'merchant_private_key' => self::$testMerchantKeys['private'],
             'nagad_public_key'     => self::$testNagadKeys['public'],
         ]);
+    }
 
-        // Cancelled via callback query
-        $cancelled = $gateway->verify([
-            'payment_ref_id' => 'REF_CANCELLED',
-            'status'         => 'cancel',
-        ]);
-        $this->assertFalse($cancelled['valid']);
-        $this->assertSame('CANCELLED', $cancelled['status']);
-
-        // Failed via verify endpoint
-        Nagad::setMockTransport(function () {
-            return [
-                'status'     => 'Failed',
-                'statusCode' => '101',
-                'message'    => 'Insufficient balance in wallet',
-            ];
+    /** Nagad's verify API answers with $remote (changeable during the test) */
+    private function answer(array &$remote): void
+    {
+        Nagad::setMockTransport(function () use (&$remote) {
+            return $remote;
         });
+    }
 
-        $failed = $gateway->verifyPayment('REF_FAILED');
+    private function seed(string $ref, float $amount = 500.0, string $status = 'INITIATED'): void
+    {
+        if (!Schema::hasTable('nagad_transactions')) {
+            (require dirname(__DIR__) . '/database/migrations/' . basename(glob(dirname(__DIR__) . '/database/migrations/*.php')[0]))->up();
+        }
+        DB::table('nagad_transactions')->where('payment_ref_id', $ref)->delete();
+        DB::table('nagad_transactions')->where('order_id', 'ORD_' . $ref)->delete();
+        DB::table('nagad_transactions')->insert([
+            'order_id' => 'ORD_' . $ref, 'payment_ref_id' => $ref, 'amount' => $amount, 'currency' => 'BDT',
+            'status' => $status, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function stored(string $ref): string
+    {
+        return (string) DB::table('nagad_transactions')->where('payment_ref_id', $ref)->first()->status;
+    }
+
+    private array $events = ['payment.success' => 0, 'payment.failed' => 0, 'payment.cancelled' => 0];
+
+    private function listen(): void
+    {
+        foreach (array_keys($this->events) as $name) {
+            $this->events[$name] = 0;
+            Event::forget($name);
+            Event::listen($name, function () use ($name) {
+                $this->events[$name]++;
+            });
+        }
+    }
+
+    public function testSuccessFiresOnceAndCannotBeUndone(): void
+    {
+        $this->seed('REF_OK', 500);
+        $this->listen();
+        $remote = ['status' => 'Success', 'orderId' => 'SOMETHING_ELSE', 'amount' => '500.00', 'issuerTransactionId' => 'TX1'];
+        $this->answer($remote);
+        $gateway = $this->gateway();
+
+        $first = $gateway->verifyPayment('REF_OK');
+        $this->assertTrue($first['valid']);
+        $this->assertSame('ORD_REF_OK', $first['order_id'], 'the stored order wins over the order id in the response');
+        $this->assertSame('SUCCESS', $this->stored('REF_OK'));
+
+        // Refreshing the callback page, or a forged cancel link, changes nothing and credits nothing twice
+        $gateway->verifyPayment('REF_OK');
+        $gateway->verify(['payment_ref_id' => 'REF_OK', 'status' => 'cancel']);
+        $remote = ['status' => 'Cancelled'];
+        $gateway->verifyPayment('REF_OK');
+
+        $this->assertSame('SUCCESS', $this->stored('REF_OK'));
+        $this->assertSame(1, $this->events['payment.success']);
+        $this->assertSame(0, $this->events['payment.failed'] + $this->events['payment.cancelled']);
+    }
+
+    public function testCallbackStatusIsOnlyAHint(): void
+    {
+        $this->seed('REF_PENDING');
+        $this->listen();
+        $remote = ['status' => 'InProgress'];
+        $this->answer($remote);
+
+        $result = $this->gateway()->verify(['payment_ref_id' => 'REF_PENDING', 'status' => 'cancel']);
+        $this->assertFalse($result['valid']);
+        $this->assertSame('PENDING', $result['status']);
+        $this->assertSame('INITIATED', $this->stored('REF_PENDING'), 'a forged cancel link cannot cancel a payment in progress');
+        $this->assertSame(0, $this->events['payment.cancelled']);
+
+        $remote = ['status' => 'Cancelled'];
+        $this->gateway()->verify(['payment_ref_id' => 'REF_PENDING']);
+        $this->assertSame('CANCELLED', $this->stored('REF_PENDING'));
+        $this->assertSame(1, $this->events['payment.cancelled']);
+    }
+
+    public function testPaidAmountMustMatchTheOrder(): void
+    {
+        $this->seed('REF_SHORT', 1500);
+        $this->listen();
+        $remote = ['status' => 'Success', 'amount' => '15.00', 'issuerTransactionId' => 'TX2'];
+        $this->answer($remote);
+
+        $result = $this->gateway()->verifyPayment('REF_SHORT');
+        $this->assertFalse($result['valid']);
+        $this->assertSame('AMOUNT_MISMATCH', $result['status']);
+        $this->assertSame(0, $this->events['payment.success']);
+        $this->assertSame(1, $this->events['payment.failed']);
+    }
+
+    public function testPaymentReferenceIsValidatedAndEncoded(): void
+    {
+        $remote = [];
+        $this->answer($remote);
+        $this->assertThrows(InvalidArgumentException::class, fn() => $this->gateway()->verifyPayment('../../merchant/secret'));
+        $this->assertThrows(InvalidArgumentException::class, fn() => $this->gateway()->verifyPayment('REF?x=1'));
+    }
+
+    public function testFailedPaymentFiresOnce(): void
+    {
+        $this->seed('REF_FAILED');
+        $this->listen();
+        $remote = ['status' => 'Failed', 'statusCode' => '101', 'message' => 'Insufficient balance in wallet'];
+        $this->answer($remote);
+
+        $failed = $this->gateway()->verifyPayment('REF_FAILED');
         $this->assertFalse($failed['valid']);
         $this->assertSame('FAILED', $failed['status']);
+        $this->gateway()->verifyPayment('REF_FAILED');
+        $this->assertSame(1, $this->events['payment.failed']);
     }
 
     public function testControllerHandlesCallbackRedirect(): void
     {
         $controller = new NagadController();
+        $remote = ['status' => 'Cancelled'];
+        $this->answer($remote);
 
-        // Cancel callback returns cancel view
-        $_GET['payment_ref_id'] = 'REF_1';
-        $_GET['status'] = 'cancel';
+        $_GET = ['payment_ref_id' => 'REF_1', 'status' => 'cancel'];
+        $this->assertContains('nagad-cancel-card', $controller->callback(new Request()));
 
-        $viewOutput = $controller->callback(new Request());
-        $this->assertContains('nagad-cancel-card', $viewOutput);
+        $remote = ['status' => 'Aborted'];
+        $_GET = ['payment_ref_id' => 'REF_2', 'status' => 'aborted'];
+        $output = $controller->callback(new Request());
+        $this->assertContains('nagad-fail-card', $output);
 
-        // Aborted callback returns fail view
-        $_GET['payment_ref_id'] = 'REF_2';
-        $_GET['status'] = 'aborted';
-
-        $viewOutput = $controller->callback(new Request());
-        $this->assertContains('nagad-fail-card', $viewOutput);
+        // Text in the URL is never shown back
+        $_GET = ['payment_ref_id' => 'REF_3', 'status' => 'failed', 'message' => 'Call +880 now for a refund'];
+        $remote = ['status' => 'Failed'];
+        $this->assertNotContains('Call +880', $controller->callback(new Request()));
 
         $_GET = [];
     }
