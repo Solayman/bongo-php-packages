@@ -108,14 +108,14 @@ Publish assets directly into your application:
 # Publish views to resources/views/vendor/bkash/
 php bongo package:publish bkash --views
 
-# Publish translations to lang/vendor/bkash/
+# Publish translations to resources/lang/vendor/bkash/
 php bongo package:publish bkash --lang
 
 # Publish configuration to config/bkash.php
 php bongo package:publish bkash --config
 ```
 
-Application files in `resources/views/vendor/bkash/` and `lang/vendor/bkash/` take priority over package files and survive future package updates.
+Application files in `resources/views/vendor/bkash/` and `resources/lang/vendor/bkash/` take priority over package files and survive future package updates.
 
 ---
 

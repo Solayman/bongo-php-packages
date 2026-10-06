@@ -114,14 +114,14 @@ Publish assets directly into your application:
 # Publish views to resources/views/vendor/sslcommerz/
 php bongo package:publish sslcommerz --views
 
-# Publish translations to lang/vendor/sslcommerz/
+# Publish translations to resources/lang/vendor/sslcommerz/
 php bongo package:publish sslcommerz --lang
 
 # Publish configuration to config/sslcommerz.php
 php bongo package:publish sslcommerz --config
 ```
 
-Application files in `resources/views/vendor/sslcommerz/` and `lang/vendor/sslcommerz/` take priority over package files and survive future package updates.
+Application files in `resources/views/vendor/sslcommerz/` and `resources/lang/vendor/sslcommerz/` take priority over package files and survive future package updates.
 
 ---
 

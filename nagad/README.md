@@ -120,7 +120,7 @@ Or as a partial:
 Publish assets into your application to customize views and translations:
 ```bash
 php bongo package:publish nagad --views   # copies to resources/views/vendor/nagad/
-php bongo package:publish nagad --lang    # copies to lang/vendor/nagad/
+php bongo package:publish nagad --lang    # copies to resources/lang/vendor/nagad/
 ```
 
 ---

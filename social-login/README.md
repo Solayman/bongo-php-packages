@@ -82,4 +82,4 @@ To customize button design or translations, publish assets into your application
 php bongo package:publish social-login --views --lang
 ```
 - Views: `resources/views/vendor/social-login/buttons.php`
-- Translations: `lang/vendor/social-login/en.json` and `bn.json`
+- Translations: `resources/lang/vendor/social-login/en.json` and `bn.json`

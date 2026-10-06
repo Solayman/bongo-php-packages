@@ -646,7 +646,7 @@ php run_tests.php
 All packages in this repository adhere to strict architectural rules:
 1. **Zero Required Dependencies:** Pure PHP 8.0+, no mandatory Composer packages, no Node.js runtime.
 2. **PSR-12 Standard:** 0 errors verified via `php phpcs.phar`.
-3. **Application Override Priority:** Assets published to `resources/views/vendor/<package>/` and `lang/vendor/<package>/` take precedence over package defaults.
+3. **Application Override Priority:** Assets published to `resources/views/vendor/<package>/` and `resources/lang/vendor/<package>/` take precedence over package defaults.
 4. **Local Diff Safety Net:** `System\Package\Installer` computes SHA-256 hashes against `packages/.lock.json` and prevents accidental overwrite of local developer customizations.
 5. **Multi-Database Support:** All database migrations and models must function identically across MySQL, PostgreSQL, and SQLite.
 
