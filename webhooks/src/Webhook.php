@@ -64,7 +64,7 @@ class Webhook
         $signature = $secret !== '' ? static::sign($jsonPayload, $secret, $timestamp) : '';
 
         $call = [
-            'id'         => uniqid('wh_', true),
+            'id'         => 'wh_' . bin2hex(random_bytes(12)),
             'url'        => $url,
             'event'      => $event,
             'payload'    => $payload,
@@ -94,20 +94,40 @@ class Webhook
 
     protected static function sendHttp(array $call, string $jsonPayload): array
     {
+        $pin = null;
+        $refused = static::refusal($call['url'], $pin);
+        if ($refused !== null) {
+            return ['success' => false, 'status_code' => 0, 'body' => '', 'error' => $refused, 'call' => $call];
+        }
+
         $headers = [];
         foreach ($call['headers'] as $k => $v) {
-            $headers[] = "{$k}: {$v}";
+            // A CR/LF in a header name or value would let the caller inject extra headers
+            $name = preg_replace('/[^A-Za-z0-9-]/', '', (string) $k);
+            $headers[] = $name . ': ' . str_replace(["\r", "\n", "\0"], '', (string) $v);
         }
 
         $ch = curl_init($call['url']);
-        curl_setopt_array($ch, [
+        $options = [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $jsonPayload,
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => (int) config('webhooks.timeout', 10),
             CURLOPT_SSL_VERIFYPEER => (bool) config('webhooks.verify_ssl', true),
-        ]);
+            CURLOPT_FOLLOWLOCATION => false,
+        ];
+        // http(s) only: never file://, gopher://, dict://... (they could read local files or reach internal services)
+        if (defined('CURLOPT_PROTOCOLS_STR')) {
+            $options[CURLOPT_PROTOCOLS_STR] = 'http,https';
+        } elseif (defined('CURLOPT_PROTOCOLS')) {
+            $options[CURLOPT_PROTOCOLS] = CURLPROTO_HTTP | CURLPROTO_HTTPS;
+        }
+        // Connect to the address that was checked (a second DNS answer cannot point somewhere else)
+        if ($pin !== null) {
+            $options[CURLOPT_RESOLVE] = [$pin];
+        }
+        curl_setopt_array($ch, $options);
 
         $body = curl_exec($ch);
         $error = curl_error($ch) ?: null;
@@ -123,5 +143,64 @@ class Webhook
             'error'       => $error,
             'call'        => $call,
         ];
+    }
+
+    /**
+     * Why a URL may not be called, or null when it may.
+     * Only http(s). With webhooks.block_private_networks (default on in production) the host must
+     * not resolve to a private, loopback, link-local or reserved address (127.0.0.1, 10.x,
+     * 169.254.169.254 cloud metadata...), so user-entered webhook URLs cannot reach internal services.
+     */
+    public static function refusal(string $url, ?string &$pin = null): ?string
+    {
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = (string) ($parts['host'] ?? '');
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+            return 'Webhook URL must be http(s)://host/...';
+        }
+
+        $block = function_exists('config')
+            ? (bool) config('webhooks.block_private_networks', env('APP_ENV', 'production') === 'production')
+            : true;
+        if (!$block) {
+            return null;
+        }
+
+        $bare = trim($host, '[]');
+        $ips = filter_var($bare, FILTER_VALIDATE_IP) ? [$bare] : static::resolve($bare);
+        if ($ips === []) {
+            return "Webhook host [$host] could not be resolved";
+        }
+        foreach ($ips as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return "Webhook host [$host] points to a private or reserved address";
+            }
+        }
+        if (!filter_var($bare, FILTER_VALIDATE_IP)) {
+            $port = (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
+            $pin = $bare . ':' . $port . ':' . (str_contains($ips[0], ':') ? '[' . $ips[0] . ']' : $ips[0]);
+        }
+        return null;
+    }
+
+    /** @return string[] IPv4 and IPv6 addresses of $host */
+    protected static function resolve(string $host): array
+    {
+        $ips = [];
+        foreach ((array) @dns_get_record($host, DNS_A | DNS_AAAA) as $record) {
+            if (!empty($record['ip'])) {
+                $ips[] = $record['ip'];
+            } elseif (!empty($record['ipv6'])) {
+                $ips[] = $record['ipv6'];
+            }
+        }
+        if ($ips === []) {
+            $ip = gethostbyname($host);
+            if ($ip !== $host) {
+                $ips[] = $ip;
+            }
+        }
+        return array_values(array_unique($ips));
     }
 }

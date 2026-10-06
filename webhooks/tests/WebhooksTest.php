@@ -57,4 +57,18 @@ class WebhooksTest extends TestCase
         $this->assertSame($payload, $dispatched[0]['payload']);
         $this->assertTrue(!empty($dispatched[0]['headers']['X-Bongo-Signature']));
     }
+
+    public function testOnlyPublicHttpUrlsAreCalled(): void
+    {
+        $GLOBALS['config']['webhooks']['block_private_networks'] = true;
+        try {
+            foreach (['file:///etc/passwd', 'gopher://127.0.0.1:6379/_x', 'http://127.0.0.1/hook', 'http://169.254.169.254/latest/meta-data', 'http://10.0.0.5/x', 'http://[::1]/x', 'ftp://example.com/x'] as $url) {
+                $this->assertNotNull(\Bongo\Packages\Webhooks\Webhook::refusal($url), "refused: $url");
+            }
+            $pin = null;
+            $this->assertNull(\Bongo\Packages\Webhooks\Webhook::refusal('https://8.8.8.8/hook', $pin), 'a public address is allowed');
+        } finally {
+            unset($GLOBALS['config']['webhooks']['block_private_networks']);
+        }
+    }
 }
