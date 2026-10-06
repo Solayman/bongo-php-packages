@@ -86,45 +86,46 @@ class OTP
     {
         $phone = self::normalizePhone($phone);
         $code = trim($code);
-        $record = self::getLatestRecord($phone, $purpose);
+        $maxAttempts = (int) (self::settings()['max_attempts'] ?? 5);
 
-        if (!$record || !empty($record->verified_at)) {
+        try {
+            // One locked read-check-write: parallel guesses cannot exceed max_attempts,
+            // and a code cannot be accepted twice
+            $verified = (bool) DB::transaction(function () use ($phone, $code, $purpose, $maxAttempts): bool {
+                $record = DB::table('otp_codes')
+                    ->where('phone', $phone)
+                    ->where('purpose', $purpose)
+                    ->orderBy('id', 'DESC')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$record || !empty($record->verified_at) || (int) $record->attempts >= $maxAttempts) {
+                    return false;
+                }
+
+                $now = date('Y-m-d H:i:s');
+                $ok = strtotime((string) $record->expires_at) >= time()
+                    && hash_equals((string) $record->code_hash, hash('sha256', $code));
+
+                DB::table('otp_codes')->where('id', $record->id)->update([
+                    'attempts'    => (int) $record->attempts + 1,
+                    'verified_at' => $ok ? $now : null,
+                    'updated_at'  => $now,
+                ]);
+                return $ok;
+            });
+        } catch (Throwable $e) {
             return false;
         }
 
-        $settings = self::settings();
-        $maxAttempts = (int) ($settings['max_attempts'] ?? 5);
-
-        // Check if exceeded max attempts
-        if ((int) $record->attempts >= $maxAttempts) {
-            return false;
-        }
-
-        // Increment attempts count
-        self::incrementAttempts((int) $record->id);
-
-        // Check expiration
-        if (strtotime((string) $record->expires_at) < time()) {
-            return false;
-        }
-
-        // Constant-time hash verification
-        $enteredHash = hash('sha256', $code);
-        if (!hash_equals((string) $record->code_hash, $enteredHash)) {
-            return false;
-        }
-
-        // Mark as verified
-        self::markVerified((int) $record->id);
-
-        if (class_exists(Event::class)) {
+        if ($verified && class_exists(Event::class)) {
             Event::dispatch('otp.verified', [
                 'phone'   => $phone,
                 'purpose' => $purpose,
             ]);
         }
 
-        return true;
+        return $verified;
     }
 
     /**
@@ -193,28 +194,4 @@ class OTP
         }
     }
 
-    protected static function incrementAttempts(int $id): void
-    {
-        try {
-            $record = DB::table('otp_codes')->where('id', $id)->first();
-            if ($record) {
-                DB::table('otp_codes')->where('id', $id)->update([
-                    'attempts'   => ((int) $record->attempts) + 1,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-            }
-        } catch (Throwable $e) {
-        }
-    }
-
-    protected static function markVerified(int $id): void
-    {
-        try {
-            DB::table('otp_codes')->where('id', $id)->update([
-                'verified_at' => date('Y-m-d H:i:s'),
-                'updated_at'  => date('Y-m-d H:i:s'),
-            ]);
-        } catch (Throwable $e) {
-        }
-    }
 }
