@@ -15,10 +15,16 @@ class PaypalController
      */
     public function checkout(Request $request): string
     {
+        // The browser chooses amount and order here: demo/testing only (PAYPAL_DEMO_CHECKOUT=true).
+        // In an app, call Paypal::create() from your controller with the order loaded on the server.
+        if (!config('paypal.demo_checkout', false)) {
+            abort(404);
+        }
+
         $amount = (float) $request->input('amount', 0);
         $currency = (string) $request->input('currency', 'USD');
         $description = (string) $request->input('description', 'Order Payment');
-        $referenceId = (string) $request->input('reference_id', uniqid('ORD_'));
+        $referenceId = (string) $request->input('reference_id', 'ORD_' . bin2hex(random_bytes(6)));
         $customId = (string) $request->input('custom_id', '');
 
         try {
@@ -41,8 +47,8 @@ class PaypalController
             return function_exists('view') ? view('paypal::cancel') : 'Cancelled';
         } catch (Throwable $e) {
             return function_exists('view')
-                ? view('paypal::cancel', ['error' => $e->getMessage()])
-                : 'Error: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+                ? view('paypal::cancel', ['error' => 'The payment could not be started. Please try again.'])
+                : 'The payment could not be started.';
         }
     }
 
@@ -53,6 +59,7 @@ class PaypalController
     {
         // PayPal passes order ID as 'token' query param
         $orderId = (string) ($request->input('token') ?? $request->input('order_id') ?? '');
+        $orderId = preg_match('/^[A-Za-z0-9-]{1,64}$/', $orderId) ? $orderId : '';
         $payerId = (string) $request->input('PayerID', '');
         $captureId = '';
         $amount = 0.0;
@@ -93,6 +100,7 @@ class PaypalController
     public function cancel(Request $request): string
     {
         $orderId = (string) ($request->input('token') ?? $request->input('order_id') ?? '');
+        $orderId = preg_match('/^[A-Za-z0-9-]{1,64}$/', $orderId) ? $orderId : '';
         return function_exists('view')
             ? view('paypal::cancel', ['order_id' => $orderId])
             : 'Payment cancelled';

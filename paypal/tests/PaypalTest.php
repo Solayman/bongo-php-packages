@@ -8,7 +8,10 @@ use Bongo\Packages\Paypal\Controllers\PaypalController;
 use Bongo\Packages\Paypal\Exceptions\PaypalException;
 use Bongo\Packages\Paypal\Paypal;
 use InvalidArgumentException;
+use System\Database\DB;
+use System\Database\Schema\Schema;
 use System\Events\Event;
+use System\Http\HttpException;
 use System\Http\Request;
 use System\Testing\TestCase;
 
@@ -308,7 +311,15 @@ class PaypalTest extends TestCase
         $_POST['currency'] = 'USD';
         $_POST['description'] = 'Test Item';
 
-        $checkoutHtml = $controller->checkout(new Request());
+        // The demo checkout (browser chooses the amount) is off unless enabled
+        $this->assertThrows(HttpException::class, fn() => $controller->checkout(new Request()));
+
+        $GLOBALS['config']['paypal']['demo_checkout'] = true;
+        try {
+            $checkoutHtml = $controller->checkout(new Request());
+        } finally {
+            unset($GLOBALS['config']['paypal']['demo_checkout']);
+        }
         $this->assertContains('ORDER-MOCK-12345', $checkoutHtml);
 
         $_GET['token'] = 'ORDER-MOCK-12345';
@@ -320,5 +331,96 @@ class PaypalTest extends TestCase
         $_GET['token'] = 'ORDER-MOCK-12345';
         $cancelHtml = $controller->cancel(new Request());
         $this->assertContains('Payment Cancelled', $cancelHtml);
+    }
+
+    private array $events = ['payment.success' => 0, 'payment.failed' => 0];
+
+    private function listen(): void
+    {
+        foreach (array_keys($this->events) as $name) {
+            $this->events[$name] = 0;
+            Event::forget($name);
+            Event::listen($name, function () use ($name) {
+                $this->events[$name]++;
+            });
+        }
+    }
+
+    /** A sandbox where every order/capture call answers for $orderId */
+    private function sandbox(string $orderId): Paypal
+    {
+        Paypal::setMockTransport(function (string $method, string $url, $body, array $headers) use ($orderId): array {
+            if (str_contains($url, '/token')) {
+                return ['access_token' => 'mock_token', 'expires_in' => 3600];
+            }
+            if (str_contains($url, '/verify-webhook-signature')) {
+                return ['verification_status' => 'SUCCESS'];
+            }
+            return [
+                'id' => $orderId,
+                'status' => 'COMPLETED',
+                'purchase_units' => [['payments' => ['captures' => [['id' => 'CAP-' . $orderId, 'amount' => ['currency_code' => 'USD', 'value' => '25.00']]]]]],
+            ];
+        });
+        return new Paypal(['client_id' => 'c', 'client_secret' => 's', 'webhook_id' => 'WH-1']);
+    }
+
+    private function webhook(Paypal $paypal, string $type, string $orderId, ?string $eventId = null): void
+    {
+        $headers = [
+            'paypal-auth-algo' => 'SHA256withRSA',
+            'paypal-cert-url' => 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT-123',
+            'paypal-transmission-id' => 'trans-123',
+            'paypal-transmission-sig' => 'sig-456',
+            'paypal-transmission-time' => '2026-10-04T12:00:00Z',
+        ];
+        $paypal->handleWebhook($headers, (string) json_encode([
+            'id' => $eventId ?? 'WH-EVT-' . bin2hex(random_bytes(6)),
+            'event_type' => $type,
+            'resource' => [
+                'id' => 'CAP-' . $orderId,
+                'amount' => ['currency_code' => 'USD', 'value' => '25.00'],
+                'supplementary_data' => ['related_ids' => ['order_id' => $orderId]],
+            ],
+        ]));
+    }
+
+    public function testCaptureAndWebhookReportThePaymentOnce(): void
+    {
+        $orderId = 'ORD-' . strtoupper(bin2hex(random_bytes(6)));
+        if (!Schema::hasTable('paypal_orders')) {
+            (require glob(dirname(__DIR__) . '/database/migrations/*.php')[0])->up();
+        }
+        DB::table('paypal_orders')->insert(['order_id' => $orderId, 'status' => 'CREATED', 'amount' => 25, 'currency' => 'USD', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
+        $paypal = $this->sandbox($orderId);
+        $this->listen();
+
+        $paypal->captureOrder($orderId);                                  // return page
+        $paypal->captureOrder($orderId);                                  // customer refreshes it
+        $this->webhook($paypal, 'PAYMENT.CAPTURE.COMPLETED', $orderId);   // PayPal's webhook for the same capture
+        $this->webhook($paypal, 'PAYMENT.CAPTURE.DENIED', $orderId);      // a late denial
+
+        $this->assertSame(1, $this->events['payment.success']);
+        $this->assertSame(0, $this->events['payment.failed']);
+        $this->assertSame('COMPLETED', (string) DB::table('paypal_orders')->where('order_id', $orderId)->first()->status);
+    }
+
+    public function testWebhookRetriesAreHandledOnce(): void
+    {
+        $orderId = 'ORD-' . strtoupper(bin2hex(random_bytes(6)));
+        $paypal = $this->sandbox($orderId);
+        $this->listen();
+
+        $this->webhook($paypal, 'PAYMENT.CAPTURE.COMPLETED', $orderId, 'WH-EVT-RETRY-' . $orderId);
+        $this->webhook($paypal, 'PAYMENT.CAPTURE.COMPLETED', $orderId, 'WH-EVT-RETRY-' . $orderId);
+        $this->assertSame(1, $this->events['payment.success']);
+    }
+
+    public function testIdsInApiPathsAreValidated(): void
+    {
+        $paypal = $this->sandbox('ORD-1');
+        $this->assertThrows(PaypalException::class, fn() => $paypal->captureOrder('../../v1/payments/payouts'));
+        $this->assertThrows(PaypalException::class, fn() => $paypal->refund('CAP-1/../../x'));
+        $this->assertThrows(PaypalException::class, fn() => $paypal->getOrder('ORD 1?x'));
     }
 }
