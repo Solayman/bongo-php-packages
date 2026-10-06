@@ -195,4 +195,48 @@ class SocialLoginTest extends TestCase
         $user = SocialLogin::stateless('mock')->user();
         $this->assertSame('Mock User', $user->getName());
     }
+
+    public function testOnlyVerifiedEmailsCount(): void
+    {
+        $google = fn(array $raw) => new SocialUser('1', 'A', 'a@example.com', provider: 'google', raw: $raw);
+        $this->assertFalse($google([])->isEmailVerified(), 'Google without email_verified');
+        $this->assertFalse($google(['email_verified' => false])->isEmailVerified());
+        $this->assertTrue($google(['email_verified' => true])->isEmailVerified());
+        $this->assertTrue((new SocialUser('2', 'B', 'b@example.com', provider: 'github'))->isEmailVerified());
+        $this->assertFalse((new SocialUser('3', 'C', 'c@example.com', provider: 'custom'))->isEmailVerified());
+        $this->assertFalse((new SocialUser('4', 'D', null, provider: 'github'))->isEmailVerified());
+    }
+
+    public function testUnverifiedEmailCannotTakeOverAnAccount(): void
+    {
+        $victimEmail = 'victim_' . bin2hex(random_bytes(4)) . '@example.com';
+        $victim = \App\Models\User::create(['name' => 'Victim', 'email' => $victimEmail, 'password' => 'x', 'role' => 'admin']);
+        $controller = new \Bongo\Packages\SocialLogin\Controllers\OAuthController();
+        $resolve = new \ReflectionMethod($controller, 'resolveOrCreateUser');
+        $resolve->setAccessible(true);
+
+        try {
+            // An attacker's Google account with the victim's (unverified) email
+            $attacker = new SocialUser('g_' . bin2hex(random_bytes(4)), 'Attacker', $victimEmail, provider: 'google', raw: []);
+            $user = $resolve->invoke($controller, 'google', $attacker);
+            $this->assertNotSame((int) $victim->id, (int) $user->id, 'never signed in as the existing account');
+            $this->assertNotSame($victimEmail, $user->email);
+
+            // The real owner with a verified email is linked to the account
+            $owner = new SocialUser('g_' . bin2hex(random_bytes(4)), 'Victim', $victimEmail, provider: 'google', raw: ['email_verified' => true]);
+            $this->assertSame((int) $victim->id, (int) $resolve->invoke($controller, 'google', $owner)->id);
+        } finally {
+            \System\Database\DB::table('users')->where('email', $victimEmail)->delete();
+            \System\Database\DB::table('users')->where('email', 'like', 'google_g_%@social.local')->delete();
+        }
+    }
+
+    public function testRoutesUseTheSession(): void
+    {
+        $router = new \System\Routing\Router();
+        $router->loadFile(dirname(__DIR__) . '/routes.php');
+        foreach ($router->routes() as $route) {
+            $this->assertTrue(in_array('web', $route->middleware, true), "{$route->path} needs the session for the OAuth state");
+        }
+    }
 }

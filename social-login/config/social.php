@@ -20,6 +20,9 @@ return [
     // Automatically create new user accounts if email not found
     'auto_create_user' => true,
 
+    // Sign in to an existing account with the same email, only when the provider verified that email
+    'link_by_verified_email' => true,
+
     'providers' => [
         'google' => [
             'client_id'     => env('GOOGLE_CLIENT_ID', ''),
