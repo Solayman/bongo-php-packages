@@ -358,4 +358,61 @@ class ApiToolsTest extends TestCase
         $redocHtml = $controller->redoc();
         $this->assertContains('redoc', $redocHtml);
     }
+
+    public function testOpenApiGeneratorDocblockAnnotationsAndCustomSpecMerge(): void
+    {
+        $router = new Router();
+        $dummyController = new class {
+            /**
+             * @summary Custom Summarized Title
+             * @description Detailed custom explanation of what this endpoint does.
+             * @tags CustomTag, Analytics
+             */
+            public function customAction(): array
+            {
+                return ['success' => true];
+            }
+        };
+
+        $router->get('/api/custom-endpoint', [$dummyController, 'customAction']);
+
+        $generator = new OpenApiGenerator($router, [
+            'title'   => 'Annotated API',
+            'version' => '1.5.0',
+        ]);
+
+        // Test merge and addPath
+        $generator->merge([
+            'info' => [
+                'termsOfService' => 'https://example.com/terms',
+            ],
+        ]);
+
+        $generator->addPath('/api/manual-entry', 'POST', [
+            'summary'     => 'Manually Added Entry',
+            'description' => 'Created via addPath',
+            'tags'        => ['Manual'],
+            'responses'   => [
+                '201' => ['description' => 'Created successfully'],
+            ],
+        ]);
+
+        $spec = $generator->generate();
+
+        // Verify docblock annotations
+        $this->assertArrayHasKey('/api/custom-endpoint', $spec['paths']);
+        $op = $spec['paths']['/api/custom-endpoint']['get'];
+        $this->assertSame('Custom Summarized Title', $op['summary']);
+        $this->assertSame('Detailed custom explanation of what this endpoint does.', $op['description']);
+        $this->assertTrue(in_array('CustomTag', $op['tags'], true));
+        $this->assertTrue(in_array('Analytics', $op['tags'], true));
+
+        // Verify merged customSpec
+        $this->assertSame('https://example.com/terms', $spec['info']['termsOfService']);
+
+        // Verify addPath
+        $this->assertArrayHasKey('/api/manual-entry', $spec['paths']);
+        $this->assertSame('Manually Added Entry', $spec['paths']['/api/manual-entry']['post']['summary']);
+    }
 }
+
