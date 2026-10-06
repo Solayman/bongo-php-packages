@@ -26,7 +26,7 @@ class OTPController
      */
     public function sendOtp(Request $request): string
     {
-        $phone = (string) $request->get('phone', '');
+        $phone = (string) $request->input('phone', '');
         $clean = OTP::normalizePhone($phone);
 
         if (!preg_match('/^01[3-9]\d{8}$/', $clean)) {
@@ -81,9 +81,9 @@ class OTPController
      */
     public function verifyOtp(Request $request): string
     {
-        $phone = (string) $request->get('phone', Session::get('otp_phone', ''));
+        $phone = (string) $request->input('phone', Session::get('otp_phone', ''));
         $clean = OTP::normalizePhone($phone);
-        $code = (string) $request->get('code', '');
+        $code = (string) $request->input('code', '');
 
         if ($clean === '' || $code === '') {
             Session::flash('error', function_exists('__')

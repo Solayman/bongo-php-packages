@@ -184,4 +184,19 @@ class SSLCommerzTest extends TestCase
         $gateway = $this->gateway();
         $this->assertThrows(RuntimeException::class, fn() => $gateway->verify(['val_id' => 'x&store_passwd=leak']));
     }
+
+    public function testFailAndCancelPagesRender(): void
+    {
+        \System\View\ViewEngine::addNamespace('sslcommerz', dirname(__DIR__) . '/views');
+        $_POST = ['tran_id' => 'TXN_PAGE_1', 'error' => 'Call this number for a refund'];
+        try {
+            $controller = new \Bongo\Packages\Sslcommerz\Controllers\SSLCommerzController();
+            $fail = $controller->fail(new \System\Http\Request());
+            $this->assertContains('TXN_PAGE_1', $fail);
+            $this->assertNotContains('Call this number', $fail, 'posted text is never shown back');
+            $this->assertContains('sslcommerz-cancel', $controller->cancel(new \System\Http\Request()));
+        } finally {
+            $_POST = [];
+        }
+    }
 }

@@ -222,4 +222,19 @@ class SMSTest extends TestCase
             }
         }
     }
+
+    public function testOtpControllerRejectsAnInvalidNumber(): void
+    {
+        \System\View\ViewEngine::addNamespace('sms', dirname(__DIR__) . '/views');
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_POST = ['phone' => '12345'];
+        try {
+            $html = (new \Bongo\Packages\Sms\Controllers\OTPController())->sendOtp(new \System\Http\Request());
+            $this->assertTrue(is_string($html) && $html !== '', 'the form is shown again instead of crashing');
+        } finally {
+            $_POST = [];
+        }
+    }
 }
