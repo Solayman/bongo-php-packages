@@ -2,8 +2,8 @@
 
 ## 1. Multi-Repository Workspace Structure (`D:\laravel\framework\`)
 - **`bongo-php`**: Core framework repository (`solayman` branch for active development, `master` for production).
-- **`bongo-php-packages`**: Official package suite repository containing all 20 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`) with 174 passing package tests (706 assertions).
-- **`bongo-package-and-feature-test`**: Official testbed and application sandbox. **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
+- **`bongo-php-packages`**: Official package suite repository containing all 24 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`) with 213 passing package tests (886 assertions).
+- **`bongo-package-and-feature-test`**: Official testbed and application sandbox with 42 passing feature tests (449 assertions). **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
 - **`BongoMvc`**: Directory junction linking to `bongo-php` for seamless package test runner (`run_tests.php`) execution.
 - **`bongo-test`**: Directory junction linking to `bongo-package-and-feature-test`.
 
@@ -36,7 +36,7 @@
 
 ---
 
-## 5. Official Packages Suite Overview (20 Packages)
+## 5. Official Packages Suite Overview (24 Packages)
 1. **`sslcommerz`** (1.0.0): SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, checkout views, translations, and `php bongo sslcommerz:check`.
 2. **`bkash`** (1.0.0): bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, checkout views, translations, and `php bongo bkash:check`.
 3. **`sms`** (1.0.0): Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS, and log driver) with 6-digit cryptographic phone OTP generation, attempt throttling, verification, views, and natural Bengali localization.
@@ -51,18 +51,22 @@
 12. **`zip`** (1.0.0): Pure-PHP ZIP compression and extraction engine with fluent `ZipBuilder`, in-place `ZipReader` inspection, Zip-Slip path traversal protection, streaming HTTP downloads, and CLI commands (`zip:make`, `zip:extract`, `zip:list`).
 13. **`ftp`** (1.0.0): Zero-dependency FTP and FTPS filesystem driver extending Bongo's `Storage` facade via `Storage::disk('ftp')`, pure-PHP stream socket transport fallback, and `php bongo ftp:check`.
 14. **`paypal`** (1.0.0): PayPal REST API v2 Checkout payment gateway with hosted redirect approvals, payment capture, authorization holds, full/partial refunds, cryptographically verified webhooks, responsive views, and `php bongo paypal:check`.
-15. **`api-tools`** (1.0.0): API development suite featuring Eloquent-style `JsonResource` and `ResourceCollection` transformers with conditional inclusion, standardized `ApiResponse` formatting, automated OpenAPI 3.0 (Swagger UI & Redoc) documentation generation, sliding window API rate limiting middleware (`ApiThrottleMiddleware`), and CLI suite (`api:routes`, `api:docs`, `make:resource`).
+15. **`api-tools`** (1.0.0): API development suite featuring Eloquent-style `JsonResource` and `ResourceCollection` transformers with conditional inclusion, standardized `ApiResponse` formatting, automated OpenAPI 3.0 (Swagger UI & Redoc) documentation generation, sliding window API rate limiting middleware (`ApiThrottleMiddleware`), CLI suite (`api:routes`, `api:docs`, `make:resource`), `@summary`/`@description`/`@tags` docblock annotations, custom spec merge, in-browser editor compatibility, and `public/docs/openapi.json` route serving to prevent built-in server `/api/` path collisions (12 tests, 68 assertions).
 16. **`settings`** (1.0.0): Dynamic application & store settings in database with type casting (`boolean`, `integer`, `float`, `json`, `string`), in-memory and persistent caching, helper `setting()`, `@setting` directive, and CLI suite (`setting:get`, `setting:set`, `setting:list`, `setting:clear`).
 17. **`seo`** (1.0.0): Comprehensive Search Engine Optimization suite with fluent metadata builder, OpenGraph, Twitter Cards, Schema.org JSON-LD structured data, dynamic XML Sitemap generator adhering to `sitemaps.org` 0.9, `@seo` directive, and `sitemap:generate`.
 18. **`activity-log`** (1.0.0): Enterprise-ready audit trail and model activity logger with `LogsActivity` trait, automated event recording and old vs new attribute diff tracking, client telemetry (IP and User-Agent), and `php bongo activity:clean`.
 19. **`health`** (1.0.0): Production uptime monitoring and health check suite with built-in checks for Database latency, Storage write/read/delete, Disk Space %, Cache responsiveness, and Redis, HTTP `/health` JSON endpoint with secret token masking, and CLI `php bongo health:check`.
 20. **`file-manager`** (1.0.0): Zero-dependency web file manager and embedded professional code editor compatible with UniSharp File Manager API. Features dark slate header, directory tree sidebar, dual Thumbnails/List views, speed dial floating action buttons (FAB), drag-and-drop multi-file uploads, embedded CodeMirror 5 code editor with syntax highlighting for 10+ languages (PHP, JS, CSS, HTML, SQL, etc.), Dracula/Eclipse themes, `Ctrl+S` auto-saving, high-resolution image preview lightbox with zoom and metadata, standalone WYSIWYG connector (`bongoFileManager()`), and path traversal sanitization.
+21. **`captcha`** (1.0.0): Universal anti-bot human verification suite (Cloudflare Turnstile, Google reCAPTCHA v2/v3, hCaptcha, pure-PHP offline math & GD image challenges with replay protection, `@captcha` / `@captchascript` directives, and `VerifyCaptcha` middleware).
+22. **`aamarpay`** (1.0.0): AamarPay payment gateway for Bangladesh with sandbox/live modes, MFS support (bKash, Nagad, Rocket, Upay), card processing, `TrxCheck` server validation, pre-built views, and `php bongo aamarpay:check` CLI command.
+23. **`telegram`** (1.0.0): Real-time Telegram Bot notifications, rich system alerts with emojis and JSON details, channel broadcasts, `Telegram::fake()` unit testing, and `php bongo telegram:send` / `telegram:test` CLI utilities.
+24. **`bangla-tools`** (1.0.0): Authentic Bengali linguistic toolkit (English <-> Bengali digit conversion, number-to-words engine with কোটি/লাখ/হাজার/শত, South Asian Taka currency notation, Bongabdo calendar converter according to Bangla Academy standards, Unicode cleaner, and SEO slug generator).
 
 ---
 
 ## 6. Package Development Standards
 - **Zero Required External Dependencies**: Pure PHP 8.0+, no Composer packages, no Node.js runtime.
 - **PSR-12 Standard**: 0 errors checked via `php phpcs.phar`.
-- **Test Suite**: Run `php run_tests.php` to verify all 174 package tests (706 assertions).
+- **Test Suite**: Run `php run_tests.php` to verify all 213 package tests (886 assertions) across all 24 packages with 0 errors.
 - **Namespaced Assets**: Views must use `name::view` and translations must use `name::key`.
 - **App Override Priority**: Never hardcode paths that prevent `resources/views/vendor/<name>/` overrides.
