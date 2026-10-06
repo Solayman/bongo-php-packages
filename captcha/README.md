@@ -113,3 +113,5 @@ use Bongo\Packages\Captcha\Middleware\VerifyCaptcha;
 
 Route::post('/contact', [ContactController::class, 'submit'])->middleware(VerifyCaptcha::class);
 ```
+
+Register an alias to choose the driver per route: `'captcha' => VerifyCaptcha::class` in `config/app.php`, then `->middleware('captcha:turnstile')`. A failed check redirects back with an `error` flash message; API clients (`Accept: application/json`) get a 422 JSON error.
