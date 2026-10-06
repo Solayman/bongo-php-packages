@@ -67,10 +67,11 @@ class PathSecurity
 
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $valid = function_exists('config')
-            ? (array) config('filemanager.valid_code_extensions', ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml'])
-            : ['php', 'js', 'json', 'css', 'html', 'sql', 'md', 'txt', 'xml', 'yml'];
+            ? (array) config('filemanager.valid_code_extensions', ['js', 'json', 'css', 'sql', 'md', 'txt', 'xml', 'yml'])
+            : ['js', 'json', 'css', 'sql', 'md', 'txt', 'xml', 'yml'];
 
-        return in_array($ext, $valid, true);
+        // Never editable, even if listed in the config: saving a .php file under public/ would run it
+        return in_array($ext, $valid, true) && self::isAllowedForUpload($filename);
     }
 
     /**
@@ -126,6 +127,13 @@ class PathSecurity
             'vbs', 'vbe', 'ws', 'wsf', 'wsc', 'wsh', 'reg'
         ];
         if (in_array($ext, $blocked, true)) {
+            return false;
+        }
+
+        // HTML and SVG run scripts on this site's origin when opened (stored XSS); opt in only on purpose
+        $activeContent = ['html', 'htm', 'xhtml', 'shtml', 'svg', 'svgz', 'mht', 'mhtml'];
+        $allowActive = function_exists('config') && (bool) config('filemanager.allow_html_svg', false);
+        if (!$allowActive && in_array($ext, $activeContent, true)) {
             return false;
         }
 

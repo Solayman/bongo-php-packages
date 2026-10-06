@@ -28,7 +28,11 @@ A zero-dependency, full-featured web file manager and professional in-browser co
   - TinyMCE 5 / 6 file picker callback.
   - CKEditor 4 / 5 filebrowser integration.
   - Summernote image insertion.
-- **Security:** Strict path traversal sanitization, dangerous executable blocking (`.exe`, `.phtml`, `.phar`), and configurable upload size limits.
+- **Security:**
+  - Signed-in users only by default (`'middleware' => ['web', 'auth']`); add a gate such as `'can:manage-files'` for admins only.
+  - Server scripts (`.php`, `.phtml`, `.phar`, …) can never be uploaded, saved, renamed to or copied to.
+  - HTML and SVG are blocked by default because they can run scripts on your site (`FILEMANAGER_ALLOW_HTML_SVG=true` to allow, only for trusted admins).
+  - Strict path traversal sanitization and configurable upload size limits.
 
 ---
 
@@ -45,7 +49,7 @@ php bongo add file-manager
 
 ### Direct Browser Access
 
-Open `/filemanager` in your browser to access the complete standalone file manager and code editor interface.
+Sign in, then open `/filemanager` in your browser to access the complete standalone file manager and code editor interface.
 
 ### Standalone Form Field Integration
 

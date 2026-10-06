@@ -49,7 +49,9 @@ class FileManagerTest extends TestCase
         $this->assertTrue(PathSecurity::isImage('banner.webp'));
         $this->assertFalse(PathSecurity::isImage('script.js'));
 
-        $this->assertTrue(PathSecurity::isEditable('index.php'));
+        $this->assertFalse(PathSecurity::isEditable('index.php'), 'a saved .php file would run on the server');
+        $this->assertFalse(PathSecurity::isEditable('page.html'), 'HTML runs scripts on this origin');
+        $this->assertFalse(PathSecurity::isAllowedForUpload('logo.svg'), 'SVG can carry scripts');
         $this->assertTrue(PathSecurity::isEditable('app.js'));
         $this->assertTrue(PathSecurity::isEditable('schema.sql'));
         $this->assertFalse(PathSecurity::isEditable('binary.zip'));
@@ -79,17 +81,17 @@ class FileManagerTest extends TestCase
 
     public function testFileReadAndSaveCodeEditing(): void
     {
-        $code = "<?php\necho 'Hello Bongo!';\n";
-        $saved = FileManager::saveFile('scripts/app.php', $code);
+        $code = "console.log('Hello Bongo!');\n";
+        $saved = FileManager::saveFile('scripts/app.js', $code);
         $this->assertTrue($saved);
 
-        $content = FileManager::readFile('scripts/app.php');
+        $content = FileManager::readFile('scripts/app.js');
         $this->assertSame($code, $content);
 
         // Update with new content
-        $updatedCode = "<?php\necho 'Modified via Code Editor!';\n";
-        FileManager::saveFile('scripts/app.php', $updatedCode);
-        $this->assertSame($updatedCode, FileManager::readFile('scripts/app.php'));
+        $updatedCode = "console.log('Modified via Code Editor!');\n";
+        FileManager::saveFile('scripts/app.js', $updatedCode);
+        $this->assertSame($updatedCode, FileManager::readFile('scripts/app.js'));
     }
 
     public function testRenameAndMoveItem(): void
@@ -316,10 +318,14 @@ class FileManagerTest extends TestCase
         $files = FileManager::getItems('')['files'];
         $this->assertSame('renamed_file.txt', $files[0]->name);
 
-        // Can rename existing editable code file to same extension (code editor workflow)
-        FileManager::saveFile('scripts/app.php', '<?php echo 1;');
-        $this->assertTrue(FileManager::renameItem('scripts/app.php', 'index.php'));
-        $this->assertSame('<?php echo 1;', FileManager::readFile('scripts/index.php'));
+        // Script and active-content names are refused even for a rename
+        $this->assertFalse(FileManager::renameItem('renamed_file.txt', 'index.html'));
+        $this->assertFalse(FileManager::renameItem('renamed_file.txt', 'logo.svg'));
+
+        // Code files keep working under a safe extension
+        FileManager::saveFile('scripts/app.js', 'let a = 1;');
+        $this->assertTrue(FileManager::renameItem('scripts/app.js', 'main.js'));
+        $this->assertSame('let a = 1;', FileManager::readFile('scripts/main.js'));
     }
 
     public function testCopySecurityRejectsBypasses(): void
@@ -344,9 +350,14 @@ class FileManagerTest extends TestCase
         $this->assertFalse(FileManager::saveFile('.env', 'DB_PASSWORD=secret'));
         $this->assertFalse(FileManager::saveFile('.htaccess', 'SetHandler'));
 
+        // Never writes server scripts or HTML (remote code execution / stored XSS)
+        $this->assertFalse(FileManager::saveFile('scripts/test.php', '<?php system($_GET["c"]);'));
+        $this->assertFalse(FileManager::saveFile('scripts/test.phtml', '<?php echo 1;'));
+        $this->assertFalse(FileManager::saveFile('page.html', '<script>alert(1)</script>'));
+
         // Allows saving valid code files in code editor
-        $this->assertTrue(FileManager::saveFile('scripts/test.php', '<?php echo 123;'));
-        $this->assertSame('<?php echo 123;', FileManager::readFile('scripts/test.php'));
+        $this->assertTrue(FileManager::saveFile('scripts/test.js', 'console.log(123);'));
+        $this->assertSame('console.log(123);', FileManager::readFile('scripts/test.js'));
 
         // Reading non-editable file throws exception
         FileManager::saveFile('valid.txt', 'some text');
@@ -363,6 +374,14 @@ class FileManagerTest extends TestCase
 
         // Hidden folder rejected
         $this->assertFalse(FileManager::createFolder('', '.hidden_dir'));
+    }
+
+    public function testRoutesRequireASignedInUserByDefault(): void
+    {
+        $config = require dirname(__DIR__) . '/config/filemanager.php';
+        $this->assertTrue(in_array('auth', $config['middleware'], true), 'anonymous visitors must not reach the file manager');
+        $this->assertTrue(in_array('web', $config['middleware'], true), 'session + CSRF protection');
+        $this->assertFalse($config['allow_html_svg'], 'HTML/SVG uploads are off by default');
     }
 
     public function testScriptHelperEndpoint(): void

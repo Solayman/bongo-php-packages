@@ -6,7 +6,7 @@ use Bongo\Packages\FileManager\Controllers\FileManagerController;
 use System\Routing\Route;
 
 $prefix = function_exists('config') ? (string) config('filemanager.route_prefix', 'filemanager') : 'filemanager';
-$middleware = function_exists('config') ? (array) config('filemanager.middleware', ['web']) : ['web'];
+$middleware = function_exists('config') ? (array) config('filemanager.middleware', ['web', 'auth']) : ['web', 'auth'];
 
 Route::middleware($middleware)->group(function () use ($prefix) {
     Route::get("/{$prefix}", [FileManagerController::class, 'index']);

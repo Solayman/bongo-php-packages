@@ -260,13 +260,9 @@ class FileManagerService
         }
 
         if (is_file($source)) {
-            $oldExt = strtolower(pathinfo($source, PATHINFO_EXTENSION));
-            $newExt = strtolower(pathinfo($cleanName, PATHINFO_EXTENSION));
-
+            // The new name must be allowed exactly like an upload (no keeping a .php or .html name)
             if (!PathSecurity::isAllowedForUpload($cleanName)) {
-                if ($oldExt === '' || $oldExt !== $newExt || !PathSecurity::isEditable($cleanName)) {
-                    return false;
-                }
+                return false;
             }
         }
 
@@ -367,13 +363,9 @@ class FileManagerService
             if ($customName === '' || str_starts_with($customName, '.')) {
                 return false;
             }
-            $oldExt = strtolower(pathinfo($source, PATHINFO_EXTENSION));
-            $newExt = strtolower(pathinfo($customName, PATHINFO_EXTENSION));
-
+            // The copy's name must be allowed exactly like an upload
             if (!PathSecurity::isAllowedForUpload($customName)) {
-                if ($oldExt === '' || $oldExt !== $newExt || !PathSecurity::isEditable($customName)) {
-                    return false;
-                }
+                return false;
             }
         }
 
