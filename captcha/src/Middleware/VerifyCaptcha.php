@@ -5,37 +5,32 @@ declare(strict_types=1);
 namespace Bongo\Packages\Captcha\Middleware;
 
 use Bongo\Packages\Captcha\Captcha;
-use Closure;
+use System\Http\HttpException;
 use System\Http\Request;
-use System\Http\Response;
 
+/**
+ * Rejects the request unless its captcha answer is valid.
+ *
+ *   'middleware' => ['captcha' => \Bongo\Packages\Captcha\Middleware\VerifyCaptcha::class]   (config/app.php)
+ *   Route::post('/contact', [...])->middleware('captcha');            // default driver
+ *   Route::post('/register', [...])->middleware('captcha:turnstile'); // a specific driver
+ */
 class VerifyCaptcha
 {
-    /**
-     * Handle an incoming request and ensure captcha is valid.
-     */
-    public function handle(Request $request, Closure $next, ?string $driver = null): Response
+    public function handle(?string $driver = null): void
     {
-        $inputName = Captcha::inputName($driver);
-        $token = $request->input($inputName);
-        $clientIp = $request->ip();
+        $token = Request::input(Captcha::inputName($driver));
 
-        if (!Captcha::verify($token, $clientIp, $driver)) {
-            if ($request->isJson() || $request->wantsJson()) {
-                return Response::json([
-                    'success' => false,
-                    'message' => 'Captcha verification failed. Please try again.',
-                ], 422);
-            }
-
-            if (function_exists('redirect') && function_exists('session')) {
-                session()->flash('error', 'Captcha verification failed. Please try again.');
-                return redirect()->back();
-            }
-
-            return new Response('Captcha verification failed.', 422);
+        if (Captcha::verify(is_string($token) ? $token : null, Request::ip(), $driver)) {
+            return;
         }
 
-        return $next($request);
+        $message = 'Captcha verification failed. Please try again.';
+        if (Request::wantsJson()) {
+            throw new HttpException(422, $message);   // JSON error for API clients
+        }
+
+        flash('error', $message);
+        back();
     }
 }

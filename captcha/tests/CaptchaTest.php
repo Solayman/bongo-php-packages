@@ -188,4 +188,25 @@ class CaptchaTest extends TestCase
         $this->assertTrue(captcha_verify($stored['answer']));
         $this->assertFalse(captcha_verify($stored['answer'])); // consumed
     }
+
+    public function testMiddlewareLetsAValidAnswerThroughAndRejectsOthers(): void
+    {
+        Captcha::setConfig(['driver' => 'math', 'math' => ['session_key' => 'mw_math', 'min' => 1, 'max' => 5, 'operators' => ['+']]]);
+        Captcha::driver()->render();
+        $answer = $_SESSION['mw_math']['answer'];
+        $middleware = new \Bongo\Packages\Captcha\Middleware\VerifyCaptcha();
+
+        $_POST = ['mw_math' => (string) $answer];
+        $middleware->handle();   // valid: returns normally
+        $this->assertTrue(true);
+
+        // A wrong (or replayed) answer from an API client is a 422
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        try {
+            $this->assertThrows(\System\Http\HttpException::class, fn() => $middleware->handle());
+        } finally {
+            unset($_SERVER['HTTP_ACCEPT']);
+            $_POST = [];
+        }
+    }
 }
