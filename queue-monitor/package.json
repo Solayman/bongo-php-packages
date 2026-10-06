@@ -1,0 +1,16 @@
+{
+  "name": "queue-monitor",
+  "version": "1.0.0",
+  "description": "Zero-dependency web monitor dashboard for Bongo background queue jobs, pending counts, and failed job retries",
+  "keywords": ["queue", "jobs", "monitor", "dashboard", "failed-jobs", "bongo"],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Bongo\\Packages\\QueueMonitor\\": "src/"
+    }
+  },
+  "config": {
+    "config/queue-monitor.php": "config/queue-monitor.php"
+  },
+  "routes": "routes.php"
+}
