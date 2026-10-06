@@ -289,7 +289,7 @@ class Paypal
      */
     public function getOrder(string $orderId): array
     {
-        return $this->authenticatedRequest('GET', "/v2/checkout/orders/{$orderId}");
+        return $this->authenticatedRequest('GET', '/v2/checkout/orders/' . $this->pathId($orderId));
     }
 
     /**
@@ -297,7 +297,7 @@ class Paypal
      */
     public function captureOrder(string $orderId): array
     {
-        $response = $this->authenticatedRequest('POST', "/v2/checkout/orders/{$orderId}/capture", []);
+        $response = $this->authenticatedRequest('POST', '/v2/checkout/orders/' . $this->pathId($orderId) . '/capture', []);
 
         $status = (string) ($response['status'] ?? '');
         $captureId = null;
@@ -317,15 +317,21 @@ class Paypal
             $payerName = implode(' ', $nameParts);
         }
 
-        $this->updateOrderStatus($orderId, [
-            'status'      => $status,
+        $completed = $status === 'COMPLETED';
+        $attributes = [
             'capture_id'  => $captureId,
             'payer_email' => $payerEmail,
             'payer_id'    => $payerId,
             'payer_name'  => $payerName,
-        ]);
+        ];
+        if ($completed) {
+            $first = $this->completeOnce($orderId, $attributes);
+        } else {
+            $this->changeStatus($orderId, $status, ['COMPLETED', 'REFUNDED'], $attributes);
+            $first = false;
+        }
 
-        if (class_exists(Event::class) && ($status === 'COMPLETED' || $status === 'succeeded')) {
+        if (class_exists(Event::class) && $completed && $first) {
             $amount = 0.0;
             $currency = $this->currency;
             if (!empty($captures[0]['amount'])) {
@@ -353,7 +359,7 @@ class Paypal
      */
     public function authorizeOrder(string $orderId): array
     {
-        $response = $this->authenticatedRequest('POST', "/v2/checkout/orders/{$orderId}/authorize", []);
+        $response = $this->authenticatedRequest('POST', '/v2/checkout/orders/' . $this->pathId($orderId) . '/authorize', []);
         $this->updateOrderStatus($orderId, [
             'status' => $response['status'] ?? 'AUTHORIZED',
         ]);
@@ -376,7 +382,7 @@ class Paypal
             $payload['note_to_payer'] = $note;
         }
 
-        $response = $this->authenticatedRequest('POST', "/v2/payments/captures/{$captureId}/refund", $payload);
+        $response = $this->authenticatedRequest('POST', '/v2/payments/captures/' . $this->pathId($captureId) . '/refund', $payload);
 
         $status = (string) ($response['status'] ?? 'COMPLETED');
         $this->updateOrderStatusByCapture($captureId, 'REFUNDED');
@@ -452,13 +458,18 @@ class Paypal
             throw new PaypalException('Invalid JSON in PayPal webhook payload.', 400);
         }
 
+        // PayPal retries deliveries: handle each webhook event id once
+        if (!empty($event['id']) && $this->remembered('event:' . $event['id'])) {
+            return;
+        }
+
         $eventType = (string) ($event['event_type'] ?? '');
         $resource = $event['resource'] ?? [];
 
         switch ($eventType) {
             case 'CHECKOUT.ORDER.APPROVED':
                 $orderId = (string) ($resource['id'] ?? '');
-                $this->updateOrderStatus($orderId, ['status' => 'APPROVED']);
+                $this->changeStatus($orderId, 'APPROVED', ['COMPLETED', 'REFUNDED', 'DENIED']);
                 if (class_exists(Event::class)) {
                     Event::dispatch('paypal.order.approved', [
                         'order_id' => $orderId,
@@ -473,16 +484,12 @@ class Paypal
                 $amount = (float) ($resource['amount']['value'] ?? 0);
                 $currency = (string) ($resource['amount']['currency_code'] ?? $this->currency);
 
-                if ($orderId !== '') {
-                    $this->updateOrderStatus($orderId, [
-                        'status'     => 'COMPLETED',
-                        'capture_id' => $captureId,
-                    ]);
-                } else {
-                    $this->updateOrderStatusByCapture($captureId, 'COMPLETED');
-                }
+                $first = $orderId !== ''
+                    ? $this->completeOnce($orderId, ['capture_id' => $captureId])
+                    : $this->completeOnce('', ['capture_id' => $captureId], $captureId);
 
-                if (class_exists(Event::class)) {
+                // The return page usually captured (and reported) the order already
+                if ($first && class_exists(Event::class)) {
                     Event::dispatch('payment.success', [
                         'gateway'    => 'paypal',
                         'order_id'   => $orderId,
@@ -498,11 +505,9 @@ class Paypal
                 $captureId = (string) ($resource['id'] ?? '');
                 $orderId = (string) ($resource['supplementary_data']['related_ids']['order_id'] ?? '');
 
-                if ($orderId !== '') {
-                    $this->updateOrderStatus($orderId, ['status' => 'DENIED']);
-                }
+                $denied = $orderId !== '' && $this->changeStatus($orderId, 'DENIED', ['COMPLETED', 'REFUNDED', 'DENIED']);
 
-                if (class_exists(Event::class)) {
+                if ($denied && class_exists(Event::class)) {
                     Event::dispatch('payment.failed', [
                         'gateway'    => 'paypal',
                         'order_id'   => $orderId,
@@ -614,6 +619,88 @@ class Paypal
         } catch (\Throwable $e) {
             // Silently allow payment flow to proceed if DB table is unmigrated
         }
+    }
+
+    /** An id that is placed in an API path: PayPal ids are letters, digits and dashes */
+    protected function pathId(string $id): string
+    {
+        if (!preg_match('/^[A-Za-z0-9-]{1,64}$/', $id)) {
+            throw new PaypalException('Invalid PayPal id.', 400);
+        }
+        return $id;
+    }
+
+    /**
+     * Mark the order COMPLETED the first time only (row lock). Returns true when this call completed it.
+     * Without a stored row (table not migrated), the order/capture id is remembered in the cache instead.
+     */
+    protected function completeOnce(string $orderId, array $attributes, string $captureId = ''): bool
+    {
+        $changed = $orderId !== ''
+            ? $this->changeStatus($orderId, 'COMPLETED', ['COMPLETED', 'REFUNDED'], $attributes)
+            : $this->changeStatusByCapture($captureId, 'COMPLETED', ['COMPLETED', 'REFUNDED']);
+        if ($changed !== null) {
+            return $changed;
+        }
+        $key = $orderId !== '' ? $orderId : $captureId;
+        return $key !== '' && !$this->remembered('paid:' . $key);
+    }
+
+    /**
+     * Change paypal_orders.status under a row lock, unless it is one of $unless.
+     * true = changed, false = refused (e.g. already COMPLETED), null = no stored row.
+     */
+    protected function changeStatus(string $orderId, string $status, array $unless, array $attributes = []): ?bool
+    {
+        if ($orderId === '' || !class_exists(\System\Database\DB::class)) {
+            return null;
+        }
+        try {
+            return \System\Database\DB::transaction(function () use ($orderId, $status, $unless, $attributes): ?bool {
+                $row = \System\Database\DB::table('paypal_orders')->where('order_id', '=', $orderId)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (in_array((string) $row->status, $unless, true)) {
+                    return false;
+                }
+                $attributes = array_filter($attributes, fn($value) => $value !== null);
+                $attributes['status'] = $status;
+                $attributes['updated_at'] = date('Y-m-d H:i:s');
+                \System\Database\DB::table('paypal_orders')->where('order_id', '=', $orderId)->update($attributes);
+                return true;
+            });
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    protected function changeStatusByCapture(string $captureId, string $status, array $unless): ?bool
+    {
+        if ($captureId === '' || !class_exists(\System\Database\DB::class)) {
+            return null;
+        }
+        try {
+            $row = \System\Database\DB::table('paypal_orders')->where('capture_id', '=', $captureId)->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return $row ? $this->changeStatus((string) $row->order_id, $status, $unless) : null;
+    }
+
+    /** True when $key was handled before; otherwise remembers it for 30 days and returns false */
+    protected function remembered(string $key): bool
+    {
+        try {
+            $cacheKey = 'paypal:' . sha1($key);
+            if (\System\Cache\Cache::get($cacheKey)) {
+                return true;
+            }
+            \System\Cache\Cache::put($cacheKey, 1, 2592000);
+        } catch (\Throwable $e) {
+            // no cache configured: the stored row still guards payments
+        }
+        return false;
     }
 
     protected function updateOrderStatus(string $orderId, array $attributes): void

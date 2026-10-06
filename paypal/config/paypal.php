@@ -65,4 +65,7 @@ return [
     |
     */
     'intent' => env('PAYPAL_INTENT', 'CAPTURE'),
+
+    // POST /paypal/checkout takes amount and reference_id from the browser: demo/testing only
+    'demo_checkout' => (bool) env('PAYPAL_DEMO_CHECKOUT', false),
 ];

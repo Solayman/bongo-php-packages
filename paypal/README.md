@@ -111,3 +111,9 @@ Events automatically dispatched to Bongo's Event bus:
 - `payment.failed`: Fires on `PAYMENT.CAPTURE.DENIED`.
 - `payment.refunded`: Fires on `PAYMENT.CAPTURE.REFUNDED`.
 - `paypal.order.approved`: Fires on `CHECKOUT.ORDER.APPROVED`.
+
+## Payment events: once per payment
+
+`payment.success` fires **once** per order: the return page's `capture()` and PayPal's `PAYMENT.CAPTURE.COMPLETED` webhook do not both report it, refreshing the return page does not report it again, and webhook retries (same event id) are handled once. A completed order is never marked denied. Order and capture ids are validated before they are placed in PayPal API paths.
+
+`POST /paypal/checkout` takes `amount` and `reference_id` from the browser, so it is **off** unless `PAYPAL_DEMO_CHECKOUT=true` (testing only). In your app call `Paypal::create([...])` from your own controller with the amount of the order loaded on the server.
