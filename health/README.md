@@ -95,3 +95,7 @@ php bongo health:check --json
 ## License
 
 MIT License. Open source for Bongo MVC projects.
+
+## Who sees the details
+
+`/health` and `/api/health` show only `status` and `timestamp` to the public. The full report (checks, latency, disk) needs `HEALTH_SECRET_TOKEN`, sent as `Authorization: Bearer <token>` (or `?token=`). Without a token configured, details are shown only when `APP_DEBUG=true`. The report is cached for `HEALTH_CACHE_SECONDS` (default 10) so repeated calls cannot overload the server.

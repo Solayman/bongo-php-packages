@@ -14,6 +14,9 @@ return [
     */
     'secret_token' => env('HEALTH_SECRET_TOKEN', null),
 
+    // Reuse the last report for this many seconds (0 = run all checks on every request)
+    'cache_seconds' => (int) env('HEALTH_CACHE_SECONDS', 10),
+
     /*
     |--------------------------------------------------------------------------
     | Disk Space Threshold

@@ -113,6 +113,25 @@ class HealthTest extends TestCase
         $this->assertArrayHasKey('timestamp', $res);
     }
 
+    public function testDetailsNeedTheSecretToken(): void
+    {
+        $GLOBALS['config']['health']['secret_token'] = 'health-secret-123';
+        $GLOBALS['config']['health']['cache_seconds'] = 0;
+        $controller = new HealthController();
+        try {
+            $public = $controller->check(new Request());
+            $this->assertFalse(isset($public['checks']), 'no server details without the token');
+
+            $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer wrong-token';
+            $this->assertFalse(isset($controller->check(new Request())['checks']));
+
+            $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer health-secret-123';
+            $this->assertTrue(isset($controller->check(new Request())['checks']), 'the right bearer token sees the details');
+        } finally {
+            unset($_SERVER['HTTP_AUTHORIZATION'], $GLOBALS['config']['health']['secret_token'], $GLOBALS['config']['health']['cache_seconds']);
+        }
+    }
+
     public function testHealthCheckCommand(): void
     {
         $cmd = new HealthCheckCommand();
