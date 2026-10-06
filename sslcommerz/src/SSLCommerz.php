@@ -52,7 +52,7 @@ class SSLCommerz
             throw new RuntimeException("Invalid payment amount specified for SSLCommerz.");
         }
 
-        $tranId = (string) ($params['tran_id'] ?? ('TXN_' . uniqid()));
+        $tranId = (string) ($params['tran_id'] ?? ('TXN_' . bin2hex(random_bytes(8))));
         $amount = (float) $params['amount'];
         $currency = (string) ($params['currency'] ?? $this->currency);
 
@@ -116,7 +116,11 @@ class SSLCommerz
 
     /**
      * Server-side callback verification using val_id.
-     * Prevents client-side manipulation of payment status or amounts.
+     * Prevents client-side manipulation of payment status or amounts:
+     * - status, amount, currency and tran_id come only from SSLCommerz's validator API;
+     * - they must match the transaction stored by initiate() (amount, currency, tran_id);
+     * - the stored status changes under a row lock, a paid transaction is never undone,
+     *   and payment.success / payment.failed fire once per transaction.
      *
      * @param array $callbackData Array received in POST/GET from SSLCommerz (e.g. $_POST)
      * @return array Verified transaction details
@@ -126,10 +130,13 @@ class SSLCommerz
         $this->assertCredentials();
 
         $valId = (string) ($callbackData['val_id'] ?? '');
-        $tranId = (string) ($callbackData['tran_id'] ?? '');
+        $postedTranId = (string) ($callbackData['tran_id'] ?? '');
 
         if ($valId === '') {
             throw new RuntimeException("Missing val_id in SSLCommerz payment callback.");
+        }
+        if (!preg_match('/^[A-Za-z0-9_-]{1,100}$/', $valId)) {
+            throw new RuntimeException("Invalid val_id in SSLCommerz payment callback.");
         }
 
         $query = http_build_query([
@@ -148,31 +155,58 @@ class SSLCommerz
         }
 
         $status = strtoupper((string) ($json['status'] ?? ''));
-        $isValid = ($status === 'VALID' || $status === 'VALIDATED');
+        $tranId = (string) ($json['tran_id'] ?? '');
+        $amount = (float) ($json['amount'] ?? 0);
+        $currency = strtoupper((string) ($json['currency'] ?? ''));
+        $isValid = ($status === 'VALID' || $status === 'VALIDATED') && $tranId !== '';
+
+        // The callback must be about the same transaction the validator confirmed
+        if ($isValid && $postedTranId !== '' && !hash_equals($tranId, $postedTranId)) {
+            $isValid = false;
+            $status = 'TRAN_ID_MISMATCH';
+        }
+
+        // ...and pay the full amount, in the currency, of the transaction stored by initiate()
+        $stored = $tranId !== '' ? $this->storedTransaction($tranId) : null;
+        if ($isValid && $stored) {
+            $storedCurrency = strtoupper((string) ($stored->currency ?? ''));
+            if (abs((float) $stored->amount - $amount) > 0.009 || ($storedCurrency !== '' && $currency !== '' && $storedCurrency !== $currency)) {
+                $isValid = false;
+                $status = 'AMOUNT_MISMATCH';
+            }
+        }
 
         $result = [
             'valid' => $isValid,
             'status' => $status,
-            'tran_id' => $json['tran_id'] ?? $tranId,
+            'tran_id' => $tranId !== '' ? $tranId : $postedTranId,
             'val_id' => $valId,
-            'amount' => (float) ($json['amount'] ?? ($callbackData['amount'] ?? 0)),
-            'currency' => $json['currency'] ?? ($callbackData['currency'] ?? 'BDT'),
+            'amount' => $amount,
+            'currency' => $currency !== '' ? $currency : $this->currency,
             'bank_tran_id' => $json['bank_tran_id'] ?? '',
             'card_type' => $json['card_type'] ?? '',
             'card_brand' => $json['card_brand'] ?? '',
             'card_issuer' => $json['card_issuer'] ?? '',
             'card_no' => $json['card_no'] ?? '',
+            // SSLCommerz marks suspicious payments with risk_level 1: review those before shipping
+            'risky' => (string) ($json['risk_level'] ?? '0') === '1',
             'raw' => $json,
         ];
 
-        if ($this->logTransactions && !empty($result['tran_id'])) {
-            $this->updateTransactionStatus($result['tran_id'], $result);
+        $changed = null;
+        if ($this->logTransactions && $tranId !== '') {
+            $changed = $this->transition(
+                $tranId,
+                $isValid ? ['pending', 'failed', 'cancelled'] : ['pending'],
+                $isValid ? 'valid' : 'failed',
+                $result
+            );
         }
 
-        // Dispatch Bongo framework events if available
-        if (class_exists('System\\Events\\Event')) {
-            $event = $isValid ? 'payment.success' : 'payment.failed';
-            \System\Events\Event::dispatch($event, $result);
+        // Without a stored row, only the first validation (VALID, not VALIDATED) counts as new
+        $isNew = $changed === true || ($changed === null && ($isValid ? $status === 'VALID' : true));
+        if ($isNew && class_exists('System\\Events\\Event')) {
+            \System\Events\Event::dispatch($isValid ? 'payment.success' : 'payment.failed', $result);
         }
 
         return $result;
@@ -325,24 +359,43 @@ class SSLCommerz
         }
     }
 
-    protected function updateTransactionStatus(string $tranId, array $data): void
+    protected function storedTransaction(string $tranId): ?object
     {
         try {
-            if (class_exists('System\\Database\\DB')) {
-                DB::table('sslcommerz_transactions')
-                    ->where('tran_id', $tranId)
-                    ->update([
-                        'val_id' => $data['val_id'] ?? null,
-                        'status' => strtolower($data['status']),
-                        'card_type' => substr((string) ($data['card_type'] ?? ''), 0, 50),
-                        'bank_tran_id' => substr((string) ($data['bank_tran_id'] ?? ''), 0, 100),
-                        'card_brand' => substr((string) ($data['card_brand'] ?? ''), 0, 50),
-                        'raw_response' => json_encode($data['raw'] ?? [], JSON_UNESCAPED_SLASHES),
-                        'updated_at' => date('Y-m-d H:i:s'),
-                    ]);
-            }
+            return DB::table('sslcommerz_transactions')->where('tran_id', $tranId)->first() ?: null;
         } catch (\Throwable $e) {
-            // Silently ignore if table doesn't exist yet
+            return null;
+        }
+    }
+
+    /**
+     * Change the stored status inside a row lock, only from one of $from.
+     * true = changed, false = not allowed (already paid, or already failed), null = no stored row.
+     */
+    protected function transition(string $tranId, array $from, string $to, array $data): ?bool
+    {
+        try {
+            return DB::transaction(function () use ($tranId, $from, $to, $data): ?bool {
+                $row = DB::table('sslcommerz_transactions')->where('tran_id', $tranId)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (!in_array(strtolower((string) $row->status), $from, true)) {
+                    return false;
+                }
+                DB::table('sslcommerz_transactions')->where('tran_id', $tranId)->update([
+                    'val_id' => $data['val_id'] ?? null,
+                    'status' => $to,
+                    'card_type' => substr((string) ($data['card_type'] ?? ''), 0, 50),
+                    'bank_tran_id' => substr((string) ($data['bank_tran_id'] ?? ''), 0, 100),
+                    'card_brand' => substr((string) ($data['card_brand'] ?? ''), 0, 50),
+                    'raw_response' => json_encode($data['raw'] ?? [], JSON_UNESCAPED_SLASHES),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                return true;
+            });
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

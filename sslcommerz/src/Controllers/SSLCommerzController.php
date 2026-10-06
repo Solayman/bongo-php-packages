@@ -25,8 +25,8 @@ class SSLCommerzController
             return view('sslcommerz::fail', $verified);
         } catch (Throwable $e) {
             return view('sslcommerz::fail', [
-                'tran_id' => $request->get('tran_id', ''),
-                'error' => $e->getMessage(),
+                'tran_id' => $this->safeId($request->get('tran_id', '')),
+                'error' => 'We could not verify your payment. Please try again or contact us.',
             ]);
         }
     }
@@ -36,9 +36,10 @@ class SSLCommerzController
      */
     public function fail(Request $request): string
     {
+        // Fixed wording: anyone can post to this URL, so its text is never shown back
         return view('sslcommerz::fail', [
-            'tran_id' => $request->get('tran_id', ''),
-            'error' => $request->get('error', 'Payment failed'),
+            'tran_id' => $this->safeId($request->get('tran_id', '')),
+            'error' => 'Payment failed',
         ]);
     }
 
@@ -48,7 +49,7 @@ class SSLCommerzController
     public function cancel(Request $request): string
     {
         return view('sslcommerz::cancel', [
-            'tran_id' => $request->get('tran_id', ''),
+            'tran_id' => $this->safeId($request->get('tran_id', '')),
         ]);
     }
 
@@ -67,5 +68,10 @@ class SSLCommerzController
             }
             return ['status' => 'ERROR', 'message' => $e->getMessage()];
         }
+    }
+
+    protected function safeId(mixed $value): string
+    {
+        return is_string($value) && preg_match('/^[A-Za-z0-9_-]{1,100}$/', $value) ? $value : '';
     }
 }

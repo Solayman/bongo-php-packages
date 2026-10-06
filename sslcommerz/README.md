@@ -92,7 +92,9 @@ public function callback(Request $request)
 
 The package automatically fires standard Bongo framework events on verification:
 
-- `payment.success`: Dispatched when transaction verification succeeds (`VALID` or `VALIDATED`).
+- `payment.success`: Dispatched **once per transaction** when SSLCommerz's validator confirms it. Replayed success posts and IPN repeats do not fire it again.
+
+Verification never trusts the posted data: status, amount, currency and `tran_id` come from the validator API and must match the transaction stored by `initiate()` (otherwise `AMOUNT_MISMATCH` / `TRAN_ID_MISMATCH`, not paid). A paid transaction is never changed back to failed. `risky` is `true` when SSLCommerz flags the payment (`risk_level` 1): review those before shipping.
 - `payment.failed`: Dispatched when transaction is invalid or failed.
 
 Listen to events in `app/bootstrap.php`:
