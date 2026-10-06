@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-299%20passed%20(1239%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-330%20passed%20(1357%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **299 automated unit and integration tests (1,239 assertions)** across 40 official packages.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **330 automated unit and integration tests (1,357 assertions)** across 44 official packages.
 
 ---
 
@@ -55,6 +55,10 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`coupon`](#38-coupon-v100) | E-Commerce & Marketing | 1.0.0 | E-commerce promotions, voucher codes, percentage/fixed discounts, and cart calculation engine | `php bongo add coupon` |
 | [`push-notification`](#39-push-notification-v100) | Messaging & PWA | 1.0.0 | Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) notification engine | `php bongo add push-notification` |
 | [`geoip`](#40-geoip-v100) | Intelligence & Security | 1.0.0 | IP address geolocation, visitor country resolution, and currency/timezone detection engine | `php bongo add geoip` |
+| [`shopping-cart`](#41-shopping-cart-v100) | E-Commerce | 1.0.0 | Fluent shopping cart management engine with multi-instance support, taxes, shipping, and coupon integration | `php bongo add shopping-cart` |
+| [`qr-code`](#42-qr-code-v100) | Utilities & Payments | 1.0.0 | Pure-PHP QR Code generator with SVG, PNG, Data URI, ASCII, and payment preset support | `php bongo add qr-code` |
+| [`device-detector`](#43-device-detector-v100) | Intelligence | 1.0.0 | Zero-dependency pure PHP user-agent parser and device, browser, OS, and crawler detection engine | `php bongo add device-detector` |
+| [`honeypot`](#44-honeypot-v100) | Security & Anti-Spam | 1.0.0 | Zero-friction invisible anti-spam and anti-bot form protection with decoy fields and signed timestamps | `php bongo add honeypot` |
 
 ---
 
@@ -538,6 +542,59 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 
 ---
 
+### 41. `shopping-cart` (v1.0.0)
+**Fluent Shopping Cart & Multi-Instance Engine**
+- **Problem Solved:** E-commerce applications need a flexible shopping cart engine with items, variants, quantity rules, tax, shipping calculations, and direct integration with our `coupon` and `currency` packages.
+- **Architecture & Highlights:**
+  - Multi-instance support: manage `default` cart, `wishlist`, or `compare` side by side.
+  - Custom item options: support variations like size, color, and SKU.
+  - Item subtotals, configurable per-item or global tax rates, shipping fees, and discounts.
+  - Seamlessly bridges with the official `coupon` package.
+  - Session & Memory storage drivers.
+  - CLI command: `php bongo cart:clear [instance]`.
+- **Install:** `php bongo add shopping-cart`
+
+---
+
+### 42. `qr-code` (v1.0.0)
+**Pure-PHP Zero-Dependency QR Code Generator**
+- **Problem Solved:** Generating vector SVGs, PNGs, and ASCII QR codes for payments, receipts, and 2FA secrets without external APIs or heavy C extensions.
+- **Architecture & Highlights:**
+  - Pure PHP 8.0+ GF(256) Reed-Solomon polynomial math and ISO/IEC 18004 QR matrix generator.
+  - Scalable vector SVG, raster PNG (via GD), Base64 Data URI, and terminal ASCII output.
+  - Presets for bKash, Nagad, Wi-Fi, email, SMS, and geolocation.
+  - CLI command: `php bongo qrcode:generate <text> [--output=file]`.
+- **Install:** `php bongo add qr-code`
+
+---
+
+### 43. `device-detector` (v1.0.0)
+**User-Agent Parser & Device Detection Engine**
+- **Problem Solved:** Classifying mobile vs tablet vs desktop visitors, identifying web browsers and operating systems, and detecting search engine / AI crawlers without large external databases.
+- **Architecture & Highlights:**
+  - Fast, regex-based pure PHP User-Agent analyzer.
+  - Classifies smartphone, tablet, desktop, and bot form factors.
+  - Recognizes Chrome, Safari, Edge, Firefox, Opera, Samsung Internet, Windows, macOS, iOS, Android, Linux.
+  - Detects Googlebot, Bingbot, Twitterbot, WhatsApp, Applebot, ClaudeBot, GPTBot, and custom crawlers.
+  - CLI command: `php bongo device:detect [ua]`.
+- **Install:** `php bongo add device-detector`
+
+---
+
+### 44. `honeypot` (v1.0.0)
+**Invisible Anti-Spam & Anti-Bot Form Protection**
+- **Problem Solved:** Eliminating spam comments, fake contact submissions, and automated registrations without irritating users with math problems or image captchas.
+- **Architecture & Highlights:**
+  - Invisible decoy field trap (`my_name`) that automated bots fill, but humans never see.
+  - Cryptographically signed HMAC-SHA256 timestamp token (`_hp_time`) detecting submissions that occur unrealistically fast (< 2 seconds).
+  - Single-line template integration via `{!! honeypot() !!}`.
+  - Fluent controller guard: `Honeypot::guard()`.
+  - Testing bypass: `Honeypot::fake()`.
+  - CLI command: `php bongo honeypot:check`.
+- **Install:** `php bongo add honeypot`
+
+---
+
 ## 🛠️ Package Management CLI Reference
 
 All packages integrate directly with the Bongo CLI:
@@ -575,11 +632,11 @@ php bongo package:test <package-name>
 The package suite includes an automated test runner (`run_tests.php`) using Bongo's built-in testing engine via the `BongoMvc` junction:
 
 ```bash
-# Run tests across all 40 packages
+# Run tests across all 44 packages
 php run_tests.php
 
 # Expected result:
-# Tests: 299 passed (1239 assertions) across 40 packages
+# Tests: 330 passed (1357 assertions) across 44 packages
 ```
 
 ---

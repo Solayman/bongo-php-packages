@@ -521,6 +521,59 @@
           }
         }
       }
+    },
+    "shopping-cart": {
+      "name": "shopping-cart",
+      "latest": "1.0.0",
+      "description": "Fluent, zero-dependency shopping cart management engine with multi-instance support, taxation, shipping, and coupon integration",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "qr-code": {
+      "name": "qr-code",
+      "latest": "1.0.0",
+      "description": "Zero-dependency pure PHP QR Code generator with SVG, PNG, Data URI, ASCII, and payment preset support",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "device-detector": {
+      "name": "device-detector",
+      "latest": "1.0.0",
+      "description": "Zero-dependency pure PHP user-agent parser and device, browser, OS, and crawler detection engine",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "honeypot": {
+      "name": "honeypot",
+      "latest": "1.0.0",
+      "description": "Zero-friction invisible anti-spam and anti-bot form protection with signed timestamps and decoy field traps",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
+

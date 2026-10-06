@@ -2,7 +2,7 @@
 
 ## 1. Multi-Repository Workspace Structure (`D:\laravel\framework\`)
 - **`bongo-php`**: Core framework repository (`solayman` branch for active development, `master` for production).
-- **`bongo-php-packages`**: Official package suite repository containing all 40 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`, `toast`, `sweet-alert`, `zoom`, `google-meet`, `courier`, `invoice`, `whatsapp`, `currency`, `coupon`, `push-notification`, `geoip`) with 299 passing package tests (1,239 assertions).
+- **`bongo-php-packages`**: Official package suite repository containing all 44 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`, `toast`, `sweet-alert`, `zoom`, `google-meet`, `courier`, `invoice`, `whatsapp`, `currency`, `coupon`, `push-notification`, `geoip`, `shopping-cart`, `qr-code`, `device-detector`, `honeypot`) with 330 passing package tests (1,357 assertions).
 - **`bongo-package-and-feature-test`**: Official testbed and application sandbox with 42 passing feature tests (449 assertions). **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
 - **`BongoMvc`**: Directory junction linking to `bongo-php` for seamless package test runner (`run_tests.php`) execution.
 - **`bongo-test`**: Directory junction linking to `bongo-package-and-feature-test`.
@@ -77,12 +77,16 @@
 38. **`coupon`** (1.0.0): E-commerce promotions and vouchers engine supporting percentage discounts (with max cap), fixed discounts, free shipping, minimum order thresholds, usage caps, and CLI command `coupon:check`.
 39. **`push-notification`** (1.0.0): Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) client with JWT ES256 authentication, payload formatting, offline mock, and CLI command `push:send`.
 40. **`geoip`** (1.0.0): IP address geolocation, visitor country/city/timezone/currency resolution, reverse proxy and Cloudflare IP extraction, in-memory caching, and CLI command `geoip:lookup`.
+41. **`shopping-cart`** (1.0.0): Fluent, zero-dependency shopping cart management engine with multi-instance support, taxation, shipping calculation, coupon integration, and CLI command `cart:clear`.
+42. **`qr-code`** (1.0.0): Pure-PHP QR Code generator outputting vector SVG, raster PNG (via GD), Data URI, and terminal ASCII with presets for bKash, Nagad, Wi-Fi, email, and CLI command `qrcode:generate`.
+43. **`device-detector`** (1.0.0): Zero-dependency User-Agent parser identifying device type (mobile, tablet, desktop, bot), operating systems, web browsers, and search/AI crawlers with CLI command `device:detect`.
+44. **`honeypot`** (1.0.0): Zero-friction invisible anti-spam and anti-bot form protection with decoy field traps and cryptographically signed HMAC-SHA256 timestamps with CLI command `honeypot:check`.
 
 ---
 
 ## 6. Package Development Standards
 - **Zero Required External Dependencies**: Pure PHP 8.0+, no Composer packages, no Node.js runtime.
 - **PSR-12 Standard**: 0 errors checked via `php phpcs.phar`.
-- **Test Suite**: Run `php run_tests.php` to verify all 299 package tests (1,239 assertions) across all 40 packages with 0 errors.
+- **Test Suite**: Run `php run_tests.php` to verify all 330 package tests (1,357 assertions) across all 44 packages with 0 errors.
 - **Namespaced Assets**: Views must use `name::view` and translations must use `name::key`.
 - **App Override Priority**: Never hardcode paths that prevent `resources/views/vendor/<name>/` overrides.
