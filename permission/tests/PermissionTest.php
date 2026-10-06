@@ -14,6 +14,9 @@ use Bongo\Packages\Permission\Traits\HasRoles;
 use System\Auth\Auth;
 use System\Database\DB;
 use System\Database\Model;
+use System\Database\Schema\Blueprint;
+use System\Database\Schema\Schema;
+use System\Http\HttpException;
 use System\Http\Request;
 use System\Testing\TestCase;
 
@@ -27,74 +30,35 @@ class TestUser extends Model
 
 class PermissionTest extends TestCase
 {
+    /** The package's own migration plus a users table: works on MySQL, PostgreSQL and SQLite */
     public function setUp(): void
     {
-        $pdo = DB::connection()->getPdo();
-
-        $pdo->exec("DROP TABLE IF EXISTS role_has_permissions");
-        $pdo->exec("DROP TABLE IF EXISTS model_has_permissions");
-        $pdo->exec("DROP TABLE IF EXISTS model_has_roles");
-        $pdo->exec("DROP TABLE IF EXISTS permissions");
-        $pdo->exec("DROP TABLE IF EXISTS roles");
-        $pdo->exec("DROP TABLE IF EXISTS test_permission_users");
-
-        $pdo->exec("CREATE TABLE test_permission_users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100),
-            email VARCHAR(100),
-            created_at TIMESTAMP NULL,
-            updated_at TIMESTAMP NULL
-        )");
-
-        $pdo->exec("CREATE TABLE roles (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            guard_name VARCHAR(50) DEFAULT 'web',
-            created_at TIMESTAMP NULL,
-            updated_at TIMESTAMP NULL
-        )");
-
-        $pdo->exec("CREATE TABLE permissions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            guard_name VARCHAR(50) DEFAULT 'web',
-            created_at TIMESTAMP NULL,
-            updated_at TIMESTAMP NULL
-        )");
-
-        $pdo->exec("CREATE TABLE model_has_roles (
-            role_id INT NOT NULL,
-            model_id INT NOT NULL,
-            model_type VARCHAR(100) DEFAULT 'users',
-            PRIMARY KEY (role_id, model_id, model_type)
-        )");
-
-        $pdo->exec("CREATE TABLE model_has_permissions (
-            permission_id INT NOT NULL,
-            model_id INT NOT NULL,
-            model_type VARCHAR(100) DEFAULT 'users',
-            PRIMARY KEY (permission_id, model_id, model_type)
-        )");
-
-        $pdo->exec("CREATE TABLE role_has_permissions (
-            role_id INT NOT NULL,
-            permission_id INT NOT NULL,
-            PRIMARY KEY (role_id, permission_id)
-        )");
+        $this->dropTables();
+        $this->migration()->up();
+        Schema::create('test_permission_users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name', 100)->nullable();
+            $table->string('email', 100)->nullable();
+            $table->timestamps();
+        });
     }
 
     public function tearDown(): void
     {
         Auth::logout();
         Auth::reset();
+        $this->dropTables();
+    }
 
-        $pdo = DB::connection()->getPdo();
-        $pdo->exec("DROP TABLE IF EXISTS role_has_permissions");
-        $pdo->exec("DROP TABLE IF EXISTS model_has_permissions");
-        $pdo->exec("DROP TABLE IF EXISTS model_has_roles");
-        $pdo->exec("DROP TABLE IF EXISTS permissions");
-        $pdo->exec("DROP TABLE IF EXISTS roles");
-        $pdo->exec("DROP TABLE IF EXISTS test_permission_users");
+    private function migration(): object
+    {
+        return require dirname(__DIR__) . '/database/migrations/2026_10_04_000000_create_permission_tables.php';
+    }
+
+    private function dropTables(): void
+    {
+        $this->migration()->down();
+        Schema::dropIfExists('test_permission_users');
     }
 
     public function testRoleAndPermissionCreation(): void
@@ -200,23 +164,16 @@ class PermissionTest extends TestCase
 
         Auth::login($user);
 
-        $middleware = new RoleMiddleware();
-        $request = new Request([], [], [], [], [], ['REQUEST_METHOD' => 'GET']);
+        // Allowed role: the core calls handle() with the route parameter only, and it returns normally
+        (new RoleMiddleware())->handle('staff|admin');
+        $this->assertTrue(true);
 
-        // Allowed role
-        $called = false;
-        $response = $middleware->handle($request, function ($req) use (&$called) {
-            $called = true;
-            return 'OK';
-        }, 'staff|admin');
+        // Denied role: 403
+        $this->assertThrows(HttpException::class, fn() => (new RoleMiddleware())->handle('admin|super-admin'));
 
-        $this->assertTrue($called);
-        $this->assertSame('OK', $response);
-
-        // Denied role
-        $this->assertThrows(UnauthorizedException::class, function () use ($middleware, $request) {
-            $middleware->handle($request, fn($req) => 'OK', 'admin|super-admin');
-        });
+        // Guest: 401
+        Auth::logout();
+        $this->assertThrows(HttpException::class, fn() => (new RoleMiddleware())->handle('staff'));
     }
 
     public function testPermissionMiddleware(): void
@@ -226,23 +183,15 @@ class PermissionTest extends TestCase
 
         Auth::login($user);
 
-        $middleware = new PermissionMiddleware();
-        $request = new Request([], [], [], [], [], ['REQUEST_METHOD' => 'GET']);
+        (new PermissionMiddleware())->handle('export-payroll|view-reports');   // any one is enough
+        $this->assertTrue(true);
 
-        // Allowed permission
-        $called = false;
-        $response = $middleware->handle($request, function ($req) use (&$called) {
-            $called = true;
-            return 'PROCEEDED';
-        }, 'view-reports');
-
-        $this->assertTrue($called);
-        $this->assertSame('PROCEEDED', $response);
-
-        // Denied permission
-        $this->assertThrows(UnauthorizedException::class, function () use ($middleware, $request) {
-            $middleware->handle($request, fn($req) => 'PROCEEDED', 'export-payroll');
-        });
+        try {
+            (new PermissionMiddleware())->handle('export-payroll');
+            $this->assertTrue(false, 'a missing permission must be refused');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->status());
+        }
     }
 
     public function testUnauthorizedExceptionHasCorrectStatus(): void
