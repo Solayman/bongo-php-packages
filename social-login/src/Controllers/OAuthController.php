@@ -9,7 +9,7 @@ use System\Auth\Auth;
 use System\Database\Schema\Schema;
 use System\Events\Event;
 use System\Http\Request;
-use System\Http\Response;
+use System\Log\Logger;
 use Throwable;
 
 class OAuthController
@@ -19,7 +19,17 @@ class OAuthController
      */
     public function redirect(Request $request, string $provider): mixed
     {
-        return SocialLogin::driver($provider)->redirect();
+        return $this->driver($provider)->redirect();
+    }
+
+    /** An unknown provider in the URL is a 404, not a server error */
+    protected function driver(string $provider): \Bongo\Packages\SocialLogin\Contracts\ProviderInterface
+    {
+        try {
+            return SocialLogin::driver($provider);
+        } catch (\InvalidArgumentException $e) {
+            abort(404);
+        }
     }
 
     /**
@@ -28,7 +38,7 @@ class OAuthController
     public function callback(Request $request, string $provider): mixed
     {
         try {
-            $socialUser = SocialLogin::driver($provider)->user();
+            $socialUser = $this->driver($provider)->user();
 
             if (class_exists(Event::class)) {
                 Event::dispatch('social.login', [
@@ -50,9 +60,13 @@ class OAuthController
 
             $dest = config('social.redirect_after_login', '/');
             return redirect($dest);
+        } catch (\System\Http\HttpException $e) {
+            throw $e;
         } catch (Throwable $e) {
+            // Details (token exchange errors, provider responses) go to the log, not to the visitor
+            Logger::instance()->warning('Social login failed for {provider}: ' . $e->getMessage(), ['provider' => $provider]);
             if (function_exists('flash')) {
-                flash('error', $e->getMessage());
+                flash('error', __('social::Sign-in with this provider failed. Please try again.'));
             }
             return redirect('/login');
         }
@@ -76,8 +90,9 @@ class OAuthController
                 ->first();
         }
 
-        // 2. Find by email
-        if (!$user && !empty($email)) {
+        // 2. Find by email: only an email the provider verified may sign in to an existing account
+        $emailVerified = $socialUser->isEmailVerified();
+        if (!$user && !empty($email) && $emailVerified && config('social.link_by_verified_email', true)) {
             $user = $modelClass::where('email', $email)->first();
 
             // Link existing account with social provider info
@@ -95,11 +110,14 @@ class OAuthController
         if (!$user && config('social.auto_create_user', true)) {
             $data = [
                 'name'              => $socialUser->getName() ?: "{$provider}_user",
-                'email'             => $email ?: "{$provider}_{$providerId}@social.local",
+                // An unverified email is not used: it may belong to someone else's account
+                'email'             => $emailVerified ? $email : "{$provider}_{$providerId}@social.local",
                 'password'          => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
-                'role'              => 'customer',
-                'email_verified_at' => date('Y-m-d H:i:s'),
+                'email_verified_at' => $emailVerified ? date('Y-m-d H:i:s') : null,
             ];
+            if (class_exists(Schema::class) && Schema::hasColumn('users', 'role')) {
+                $data['role'] = 'customer';
+            }
 
             if (class_exists(Schema::class) && Schema::hasColumn('users', 'provider')) {
                 $data['provider'] = $provider;

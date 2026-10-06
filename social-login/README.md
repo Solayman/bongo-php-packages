@@ -83,3 +83,10 @@ php bongo package:publish social-login --views --lang
 ```
 - Views: `resources/views/vendor/social-login/buttons.php`
 - Translations: `resources/lang/vendor/social-login/en.json` and `bn.json`
+
+## Account linking and security
+
+- A social sign-in is linked to an existing account with the same email **only when the provider verified that email** (Google `email_verified`; GitHub and Facebook only return verified emails). Otherwise a new account is created with a placeholder email, so nobody can sign in as someone else by adding their address to a social account. Turn linking off with `'link_by_verified_email' => false`.
+- The routes use the `web` middleware: the OAuth `state` is kept in the session and checked on the callback.
+- An unknown provider in the URL is a 404. Provider errors are logged; visitors see a generic message.
+- Custom providers (`SocialLogin::extend()`): set `raw['email_verified'] = true` only when your provider confirms the email.
