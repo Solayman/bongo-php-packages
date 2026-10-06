@@ -247,4 +247,25 @@ class WishlistTest extends TestCase
         $this->assertTrue((new \Bongo\Packages\Wishlist\Models\Wishlist())->items() instanceof \System\Database\HasMany, 'items() returns a core HasMany');
         $this->assertTrue((new \Bongo\Packages\Wishlist\Models\WishlistItem())->wishlist() instanceof \System\Database\BelongsTo, 'wishlist() returns a core BelongsTo');
     }
+
+    public function testGuestItemsMergeIntoAnExistingUserList(): void
+    {
+        $p1 = TestWishlistProduct::create(['name' => 'Pen', 'price' => 2.00]);
+        $p2 = TestWishlistProduct::create(['name' => 'Ink', 'price' => 5.00]);
+
+        Wishlist::forUser(77)->add($p1, 1);
+        $guest = Wishlist::forSession('sess_merge_77');
+        $guest->add($p1, 2);
+        $guest->add($p2, 1);
+
+        Wishlist::mergeGuestToUser('sess_merge_77', 77);
+
+        $user = Wishlist::forUser(77);
+        $this->assertSame(2, $user->count(), 'the same product is one line');
+        $this->assertTrue($user->has($p2));
+        $quantity = \Bongo\Packages\Wishlist\Models\WishlistItem::query()
+            ->where('item_type', TestWishlistProduct::class)->where('item_id', (string) $p1->id)->value('quantity');
+        $this->assertSame(3, (int) $quantity, 'quantities are added');
+        $this->assertSame(0, \Bongo\Packages\Wishlist\Models\Wishlist::query()->where('session_id', 'sess_merge_77')->count(), 'the guest list is gone');
+    }
 }

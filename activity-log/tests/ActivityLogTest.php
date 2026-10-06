@@ -233,5 +233,22 @@ class ActivityLogTest extends TestCase
         $this->assertTrue($activities2[0]->relationLoaded('causer'));
         $this->assertSame('Article One', $activities2[0]->subject()->title);
     }
-}
 
+    public function testCleanRemovesOnlyOldRecordsInBulk(): void
+    {
+        $old = date('Y-m-d H:i:s', strtotime('-90 days'));
+        $new = date('Y-m-d H:i:s');
+        foreach ([$old, $old, $old, $new] as $i => $at) {
+            \System\Database\DB::table('activity_log')->insert(['description' => "entry $i", 'created_at' => $at, 'updated_at' => $at]);
+        }
+
+        \System\Database\DB::enableQueryLog();
+        $removed = \Bongo\Packages\ActivityLog\ActivityLog::clean(30);
+        $queries = count(\System\Database\DB::getQueryLog());
+        \System\Database\DB::disableQueryLog();
+
+        $this->assertSame(3, $removed);
+        $this->assertSame(1, \System\Database\DB::table('activity_log')->count());
+        $this->assertTrue($queries <= 2, "clean() uses at most 2 queries, used $queries");
+    }
+}

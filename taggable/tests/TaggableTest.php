@@ -276,4 +276,28 @@ class TaggableTest extends TestCase
         $this->assertTrue((new \Bongo\Packages\Taggable\Models\Tag())->taggables() instanceof \System\Database\HasMany, 'taggables() returns a core HasMany');
         $this->assertTrue((new \Bongo\Packages\Taggable\Models\Taggable())->tag() instanceof \System\Database\BelongsTo, 'tag() returns a core BelongsTo');
     }
+
+    public function testTaggingUsesBulkQueriesAndKeepsCountsRight(): void
+    {
+        $model = TestTaggablePost::create(['title' => 'One', 'content' => 'a']);
+        $model->tag(['bulk-one', 'bulk-two']);   // creates the tags
+
+        $other = TestTaggablePost::create(['title' => 'Two', 'content' => 'b']);
+        \System\Database\DB::enableQueryLog();
+        $other->tag(['bulk-one', 'bulk-two', 'bulk-one']);
+        $log = \System\Database\DB::getQueryLog();
+        \System\Database\DB::disableQueryLog();
+        $inserts = array_filter($log, fn($q) => str_starts_with(strtoupper(ltrim($q['sql'])), 'INSERT'));
+        $this->assertCount(1, $inserts, 'one INSERT for both pivot rows');
+
+        $count = fn(string $slug) => (int) \Bongo\Packages\Taggable\Models\Tag::query()->where('slug', $slug)->value('count');
+        $this->assertSame(2, $count('bulk-one'));
+        $this->assertSame(2, $count('bulk-two'));
+
+        $other->untag();
+        $model->untag('bulk-one');
+        $model->untag('bulk-one');   // already gone: no change
+        $this->assertSame(0, $count('bulk-one'));
+        $this->assertSame(1, $count('bulk-two'));
+    }
 }

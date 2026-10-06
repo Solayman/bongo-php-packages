@@ -28,11 +28,10 @@ class ActivityLog
         $retentionDays = $days ?? (function_exists('config') ? (int) config('activitylog.delete_records_older_than_days', 60) : 60);
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$retentionDays} days"));
 
-        $records = Activity::where('created_at', '<', $cutoff)->get();
-        $count = 0;
-        foreach ($records as $record) {
-            $record->delete();
-            $count++;
+        // Two queries in total instead of loading every old row and deleting it one by one
+        $count = Activity::where('created_at', '<', $cutoff)->count();
+        if ($count > 0) {
+            Activity::where('created_at', '<', $cutoff)->delete();
         }
 
         return $count;
