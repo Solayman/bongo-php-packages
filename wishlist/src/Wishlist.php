@@ -6,6 +6,7 @@ namespace Bongo\Packages\Wishlist;
 
 use Bongo\Packages\Wishlist\Models\Wishlist as WishlistModel;
 use Bongo\Packages\Wishlist\Models\WishlistItem as ItemModel;
+use System\Database\DB;
 use System\Database\Model;
 
 class Wishlist
@@ -399,44 +400,60 @@ class Wishlist
     public static function mergeGuestToUser(string $sessionId, int|string $userId): void
     {
         $userId = (int) $userId;
-        $guestLists = WishlistModel::query()->where('session_id', $sessionId)->get();
 
-        foreach ($guestLists as $guestList) {
-            $userList = WishlistModel::query()
-                ->where('user_id', $userId)
-                ->where('name', $guestList->name)
-                ->first();
+        // One transaction: a failure half-way never loses items
+        DB::transaction(function () use ($sessionId, $userId): void {
+            $guestLists = WishlistModel::query()->where('session_id', $sessionId)->get();
+            if (!$guestLists) {
+                return;
+            }
 
-            if ($userList) {
-                // Merge items into existing user list with single pre-query (eliminates N+1 loop)
-                $guestItems = ItemModel::query()->where('wishlist_id', $guestList->id)->get();
-                $userItems = ItemModel::query()->where('wishlist_id', $userList->id)->get();
-                $existingMap = [];
-                foreach ($userItems as $uItem) {
-                    $existingMap[$uItem->item_type . ':' . $uItem->item_id] = $uItem;
+            // All of the user's lists in one query, by name
+            $userLists = [];
+            foreach (WishlistModel::query()->where('user_id', $userId)->get() as $list) {
+                $userLists[$list->name] = $list;
+            }
+
+            foreach ($guestLists as $guestList) {
+                $userList = $userLists[$guestList->name] ?? null;
+                if (!$userList) {
+                    // Adopt guest list to user
+                    $guestList->user_id = $userId;
+                    $guestList->session_id = null;
+                    $guestList->save();
+                    $userLists[$guestList->name] = $guestList;
+                    continue;
                 }
 
-                foreach ($guestItems as $guestItem) {
+                $existing = [];
+                foreach (ItemModel::query()->where('wishlist_id', $userList->id)->get() as $item) {
+                    $existing[$item->item_type . ':' . $item->item_id] = $item;
+                }
+
+                $move = [];
+                $merged = [];
+                foreach (ItemModel::query()->where('wishlist_id', $guestList->id)->get() as $guestItem) {
                     $key = $guestItem->item_type . ':' . $guestItem->item_id;
-                    if (isset($existingMap[$key])) {
-                        $existingItem = $existingMap[$key];
-                        $existingItem->quantity += $guestItem->quantity;
-                        $existingItem->save();
-                        $guestItem->delete();
+                    if (isset($existing[$key])) {
+                        // Already on the user's list: add the quantity (atomic), drop the guest copy
+                        ItemModel::query()->where('id', $existing[$key]->id)->increment('quantity', (int) $guestItem->quantity);
+                        $merged[] = $guestItem->id;
                     } else {
-                        $guestItem->wishlist_id = $userList->id;
-                        $guestItem->save();
-                        $existingMap[$key] = $guestItem;
+                        $move[] = $guestItem->id;
+                        $existing[$key] = $guestItem;
                     }
                 }
+
+                // One UPDATE for every moved item and one DELETE for the merged ones
+                if ($move !== []) {
+                    ItemModel::query()->whereIn('id', $move)->update(['wishlist_id' => $userList->id, 'updated_at' => date('Y-m-d H:i:s')]);
+                }
+                if ($merged !== []) {
+                    ItemModel::query()->whereIn('id', $merged)->delete();
+                }
                 $guestList->delete();
-            } else {
-                // Adopt guest list to user
-                $guestList->user_id = $userId;
-                $guestList->session_id = null;
-                $guestList->save();
             }
-        }
+        });
     }
 
     /**

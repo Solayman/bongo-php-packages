@@ -194,19 +194,18 @@ trait HasTags
 
         $existingTagIds = array_flip(array_map(fn($p) => (int) $p->tag_id, $existingPivots));
 
-        foreach ($uniqueTags as $id => $tag) {
-            if (!isset($existingTagIds[$id])) {
-                $pivot = new Taggable([
-                    'tag_id' => $tag->id,
-                    'taggable_type' => static::class,
-                    'taggable_id' => (string) $this->getKey(),
-                ]);
-                $pivot->save();
-
-                // Increment usage counter
-                $tag->count = ((int) $tag->count) + 1;
-                $tag->save();
-            }
+        // One INSERT for all new pivot rows and one atomic UPDATE for their usage counters
+        $newIds = array_values(array_filter($tagIds, fn($id) => !isset($existingTagIds[$id])));
+        if ($newIds !== []) {
+            $now = date('Y-m-d H:i:s');
+            Taggable::query()->insert(array_map(fn($id) => [
+                'tag_id' => $id,
+                'taggable_type' => static::class,
+                'taggable_id' => (string) $this->getKey(),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $newIds));
+            Tag::query()->whereIn('id', $newIds)->increment('count');
         }
 
         return $this;
@@ -232,10 +231,8 @@ trait HasTags
                     ->where('taggable_id', (string) $this->getKey())
                     ->delete();
 
-                foreach ($currentTags as $tag) {
-                    $tag->count = max(0, ((int) $tag->count) - 1);
-                    $tag->save();
-                }
+                // One atomic UPDATE; never below zero
+                Tag::query()->whereIn('id', $tagIds)->where('count', '>', 0)->decrement('count');
             }
             $this->_bongoTagsCache = null;
             return $this;
@@ -288,12 +285,8 @@ trait HasTags
             ->where('taggable_id', (string) $this->getKey())
             ->delete();
 
-        foreach ($matchingTags as $tag) {
-            if (isset($attachedTagIds[(int) $tag->id])) {
-                $tag->count = max(0, ((int) $tag->count) - 1);
-                $tag->save();
-            }
-        }
+        // One atomic UPDATE; never below zero
+        Tag::query()->whereIn('id', array_keys($attachedTagIds))->where('count', '>', 0)->decrement('count');
 
         $this->_bongoTagsCache = null;
         return $this;

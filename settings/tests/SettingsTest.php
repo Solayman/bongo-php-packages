@@ -182,4 +182,17 @@ class SettingsTest extends TestCase
         $php = (new \System\View\ViewCompiler())->compile("@setting('site_name')");
         $this->assertContains('setting(\'site_name\')', $php);
     }
+
+    public function testSettingManyKeysUsesOneWrite(): void
+    {
+        Setting::set(['bulk_a' => 'x']);   // one existing key
+        \System\Database\DB::enableQueryLog();
+        Setting::set(['bulk_a' => 'y', 'bulk_b' => 2, 'bulk_c' => true, 'bulk_d' => ['k' => 'v']]);
+        $writes = array_filter(\System\Database\DB::getQueryLog(), fn($q) => !str_starts_with(strtoupper(ltrim($q['sql'])), 'SELECT'));
+        \System\Database\DB::disableQueryLog();
+
+        $this->assertCount(1, $writes, 'four keys, one INSERT ... ON CONFLICT/DUPLICATE KEY');
+        $this->assertSame('y', Setting::get('bulk_a'));
+        $this->assertSame(['k' => 'v'], Setting::get('bulk_d'));
+    }
 }

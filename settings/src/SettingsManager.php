@@ -127,49 +127,34 @@ class SettingsManager
         ?string $group = null
     ): void {
         if (is_array($key)) {
-            $keys = array_map('strval', array_keys($key));
-            $existingMap = [];
-            try {
-                $existingRows = Setting::whereIn('setting_key', $keys)->get();
-                if (is_array($existingRows)) {
-                    foreach ($existingRows as $row) {
-                        $existingMap[$row->setting_key] = $row;
-                    }
-                }
-            } catch (\Throwable) {
-                // Ignore DB error during batch fetch
-            }
-
+            $groupName = $group ?? (function_exists('config') ? config('settings.default_group', 'general') : 'general');
+            $now = date('Y-m-d H:i:s');
+            $rows = [];
             foreach ($key as $k => $v) {
                 $strKey = (string) $k;
                 $detectedType = $type ?? Setting::detectType($v);
-                $groupName = $group ?? (function_exists('config') ? config('settings.default_group', 'general') : 'general');
                 $serialized = Setting::serialize($v, $detectedType);
-
-                try {
-                    $existing = $existingMap[$strKey] ?? null;
-                    if ($existing !== null) {
-                        $existing->value = $serialized;
-                        $existing->type = $detectedType;
-                        if ($group !== null) {
-                            $existing->setting_group = $groupName;
-                        }
-                        $existing->save();
-                    } else {
-                        $newSetting = new Setting([
-                            'setting_key' => $strKey,
-                            'value' => $serialized,
-                            'type' => $detectedType,
-                            'setting_group' => $groupName,
-                        ]);
-                        $newSetting->save();
-                        $existingMap[$strKey] = $newSetting;
-                    }
-                } catch (\Throwable) {
-                    // Keep memory cache updated even if DB error
-                }
-
+                $rows[] = [
+                    'setting_key' => $strKey,
+                    'value' => $serialized,
+                    'type' => $detectedType,
+                    'setting_group' => $groupName,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
                 $this->cache[$strKey] = Setting::cast($serialized, $detectedType);
+            }
+
+            try {
+                // One statement for all keys: new ones are inserted, existing ones updated
+                // (their group changes only when a group is given)
+                Setting::query()->upsert(
+                    $rows,
+                    $group !== null ? ['value', 'type', 'setting_group', 'updated_at'] : ['value', 'type', 'updated_at'],
+                    ['setting_key']
+                );
+            } catch (\Throwable) {
+                // Keep memory cache updated even if DB error
             }
             return;
         }
