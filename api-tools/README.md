@@ -125,3 +125,8 @@ Headers returned on every request:
 - `php bongo api:routes`: Pretty table listing all registered API endpoints, methods, and controllers.
 - `php bongo api:docs`: Exports OpenAPI 3.0 specification to JSON (`public/docs/openapi.json`).
 - `php bongo make:resource <Name>`: Scaffolds a new `JsonResource` or `ResourceCollection`.
+
+## Security notes
+
+- The interactive docs (`/api/docs`, `/api/redoc`, `/docs/openapi.json`) are **off in production** unless `API_DOCS_ENABLED=true`: the spec lists every route and its middleware.
+- `ApiThrottleMiddleware` uses the core's atomic rate limiter, counts per signed-in user (or IP) and per route, and answers `429` with `code: RATE_LIMIT_EXCEEDED`. Use it as `ApiThrottleMiddleware::class . ':60,1'`.

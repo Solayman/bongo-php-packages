@@ -5,72 +5,51 @@ declare(strict_types=1);
 namespace Bongo\Packages\ApiTools\Middleware;
 
 use Bongo\Packages\ApiTools\ApiResponse;
-use Bongo\Packages\ApiTools\Http\JsonResponse;
-use Closure;
+use System\Cache\RateLimiter;
+use System\Http\Middleware\ThrottleRequests;
 use System\Http\Request;
 
-class ApiThrottleMiddleware
+/**
+ * Rate limiting with api-tools' JSON error format (code RATE_LIMIT_EXCEEDED).
+ *
+ *   Route::middleware(ApiThrottleMiddleware::class . ':60,1')->group(...);   // 60 requests per minute
+ *
+ * Counts per signed-in user (or per IP) and per route, with the core's atomic counter, so
+ * parallel requests cannot slip past the limit. Sends X-RateLimit-* headers on every answer.
+ */
+class ApiThrottleMiddleware extends ThrottleRequests
 {
-    /**
-     * Handle rate limiting for incoming API requests.
-     */
-    public function handle(Request $request, Closure $next, int $maxAttempts = 60, int $decayMinutes = 1): mixed
+    public function handle(string $maxAttempts = '60', string $decayMinutes = '1'): void
     {
-        $ip = (string) ($request->ip() ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
-        $authId = '';
-        if (function_exists('auth')) {
-            $auth = auth();
-            if ($auth && method_exists($auth, 'check') && $auth->check() && method_exists($auth, 'id')) {
-                $authId = (string) $auth->id();
-            }
-        }
-        $key = 'api_throttle_' . md5($ip . '|' . $authId);
+        $max = max(1, (int) $maxAttempts);
+        $decay = max(1, (int) round((float) $decayMinutes * 60));
+        $limiter = new RateLimiter();
+        $key = 'api:' . $this->key();
 
-        $decaySeconds = max(1, $decayMinutes * 60);
-        $attempts = 0;
-        $expiresAt = time() + $decaySeconds;
+        $hits = $limiter->hit($key, $decay);
+        $reset = time() + max(1, $limiter->availableIn($key));
 
-        $cacheDir = function_exists('base_path') ? base_path('storage/cache/throttle') : sys_get_temp_dir() . '/bongo_throttle';
-        if (!is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0755, true);
-        }
-        $cacheFile = $cacheDir . '/' . $key . '.json';
-
-        if (file_exists($cacheFile)) {
-            $data = json_decode((string) @file_get_contents($cacheFile), true);
-            if (is_array($data) && ($data['expires_at'] ?? 0) > time()) {
-                $attempts = (int) ($data['attempts'] ?? 0);
-                $expiresAt = (int) ($data['expires_at'] ?? $expiresAt);
-            }
-        }
-
-        $attempts++;
-        @file_put_contents($cacheFile, json_encode([
-            'attempts'   => $attempts,
-            'expires_at' => $expiresAt,
-        ]), LOCK_EX);
-
-        $remaining = max(0, $maxAttempts - $attempts);
-        $retryAfter = max(1, $expiresAt - time());
-
-        if ($attempts > $maxAttempts) {
-            $response = ApiResponse::error('Too Many Requests', 429, [], 'RATE_LIMIT_EXCEEDED', [
-                'Retry-After'           => (string) $retryAfter,
-                'X-RateLimit-Limit'     => (string) $maxAttempts,
+        if ($hits > $max) {
+            $this->reject([
+                'Retry-After'           => (string) max(1, $reset - time()),
+                'X-RateLimit-Limit'     => (string) $max,
                 'X-RateLimit-Remaining' => '0',
-                'X-RateLimit-Reset'     => (string) $expiresAt,
+                'X-RateLimit-Reset'     => (string) $reset,
             ]);
-            return $response;
+            return;
         }
 
-        $response = $next($request);
-
-        if ($response instanceof JsonResponse) {
-            $response->header('X-RateLimit-Limit', (string) $maxAttempts);
-            $response->header('X-RateLimit-Remaining', (string) $remaining);
-            $response->header('X-RateLimit-Reset', (string) $expiresAt);
+        if (!headers_sent()) {
+            header("X-RateLimit-Limit: $max");
+            header('X-RateLimit-Remaining: ' . max(0, $max - $hits));
+            header("X-RateLimit-Reset: $reset");
         }
+    }
 
-        return $response;
+    /** Answer 429 and stop the request */
+    protected function reject(array $headers): void
+    {
+        ApiResponse::error('Too Many Requests', 429, [], 'RATE_LIMIT_EXCEEDED', $headers)->send();
+        exit;
     }
 }
