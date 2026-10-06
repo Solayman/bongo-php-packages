@@ -58,8 +58,11 @@ class Device implements JsonSerializable
             return (string) $_SERVER['HTTP_USER_AGENT'];
         }
 
-        if (function_exists('request') && request()) {
-            return (string) request()->header('User-Agent', '');
+        if (class_exists(\System\Http\Request::class)) {
+            $hdr = \System\Http\Request::header('User-Agent');
+            if ($hdr !== null && $hdr !== '') {
+                return (string) $hdr;
+            }
         }
 
         return '';

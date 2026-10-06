@@ -275,6 +275,11 @@ class Cart
         return $this->discount;
     }
 
+    public function discount(): float
+    {
+        return $this->getDiscount();
+    }
+
     /**
      * Apply a coupon code, integrating seamlessly with coupon() package if available.
      */
