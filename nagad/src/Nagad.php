@@ -245,14 +245,21 @@ class Nagad
     }
 
     /**
-     * Verify payment status using the paymentReferenceId.
+     * Verify payment status using the paymentReferenceId (Nagad's API is the only source of truth).
+     *
+     * The stored row changes under a lock and only along allowed paths (a SUCCESS is never undone),
+     * the amount must match what was stored at createPayment(), and payment.success / payment.failed /
+     * payment.cancelled fire once per real change, so refreshing the callback page never credits twice.
      */
     public function verifyPayment(string $paymentRefId): array
     {
         $this->ensureConfigured();
+        if (!preg_match('/^[A-Za-z0-9_-]{1,100}$/', $paymentRefId)) {
+            throw new InvalidArgumentException('Invalid Nagad payment reference.');
+        }
 
         $clientIp = $this->resolveClientIp();
-        $endpoint = $this->getBaseUrl() . "/verify/payment/{$paymentRefId}";
+        $endpoint = $this->getBaseUrl() . '/verify/payment/' . rawurlencode($paymentRefId);
         $headers = [
             'X-KM-Api-Version: ' . $this->apiVersion,
             'X-KM-IP-Add: ' . $clientIp,
@@ -262,31 +269,40 @@ class Nagad
         $response = $this->request($endpoint, 'GET', [], $headers);
 
         $status = (string) ($response['status'] ?? 'Failed');
-        $statusCode = (string) ($response['statusCode'] ?? '');
         $orderId = (string) ($response['orderId'] ?? '');
         $trxId = (string) ($response['issuerTransactionId'] ?? '');
         $amount = (float) ($response['amount'] ?? 0);
         $clientMobile = (string) ($response['clientMobileNo'] ?? '');
 
-        $isValid = ($status === 'Success');
         $normalizedStatus = match ($status) {
             'Success'   => 'SUCCESS',
             'Cancelled' => 'CANCELLED',
             'Aborted'   => 'ABORTED',
+            'OrderInitiated', 'Initiated', 'Ready', 'InProgress' => 'PENDING',
             default     => 'FAILED',
         };
 
-        // Update database record
-        $this->updateTransactionStatus(
+        // The order this payment was created for, and the amount it must cover
+        $stored = $this->storedTransaction($paymentRefId);
+        if ($stored) {
+            $orderId = (string) $stored->order_id;
+            if ($normalizedStatus === 'SUCCESS' && abs((float) $stored->amount - $amount) > 0.009) {
+                $normalizedStatus = 'AMOUNT_MISMATCH';
+            }
+        }
+        $isValid = $normalizedStatus === 'SUCCESS';
+
+        $changed = $normalizedStatus === 'PENDING' ? false : $this->transition(
             $paymentRefId,
+            $isValid ? ['INITIATED', 'CANCELLED', 'ABORTED', 'FAILED'] : ['INITIATED'],
             $normalizedStatus,
-            $trxId,
-            $clientMobile,
+            $trxId !== '' ? $trxId : null,
+            $clientMobile !== '' ? $clientMobile : null,
             $response
         );
 
-        // Dispatch framework events
-        if (class_exists(Event::class)) {
+        // Events only for a real change of a stored payment (createPayment() stores it)
+        if ($changed === true && class_exists(Event::class)) {
             if ($isValid) {
                 Event::dispatch('payment.success', [
                     'gateway'        => 'nagad',
@@ -309,7 +325,7 @@ class Nagad
                     'gateway'        => 'nagad',
                     'payment_ref_id' => $paymentRefId,
                     'order_id'       => $orderId,
-                    'reason'         => $response['message'] ?? 'Payment validation failed',
+                    'reason'         => $normalizedStatus === 'AMOUNT_MISMATCH' ? 'Paid amount does not match the order' : ($response['message'] ?? 'Payment validation failed'),
                     'raw'            => $response,
                 ]);
             }
@@ -329,6 +345,7 @@ class Nagad
 
     /**
      * Process return callback from Nagad customer redirect.
+     * The "status" in the redirect is only a hint (anyone can open the URL): Nagad's API decides.
      */
     public function verify(array $callbackParams): array
     {
@@ -338,20 +355,6 @@ class Nagad
             $callbackParams['payment_id'] ??
             ''
         );
-
-        $status = (string) ($callbackParams['status'] ?? '');
-
-        if (strtolower($status) === 'cancel' || strtolower($status) === 'cancelled') {
-            if ($paymentRefId !== '') {
-                $this->updateTransactionStatus($paymentRefId, 'CANCELLED', null, null, $callbackParams);
-            }
-            return [
-                'valid'          => false,
-                'status'         => 'CANCELLED',
-                'payment_ref_id' => $paymentRefId,
-                'raw'            => $callbackParams,
-            ];
-        }
 
         if ($paymentRefId === '') {
             return [
@@ -589,36 +592,53 @@ class Nagad
         }
     }
 
-    protected function updateTransactionStatus(
+    protected function storedTransaction(string $paymentRefId): ?object
+    {
+        try {
+            return DB::table('nagad_transactions')->where('payment_ref_id', $paymentRefId)->first() ?: null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Change the stored status inside a row lock, only from one of $from.
+     * true = changed, false = not allowed (e.g. already SUCCESS), null = no stored row.
+     */
+    protected function transition(
         string $paymentRefId,
+        array $from,
         string $status,
         ?string $trxId,
         ?string $clientMobile,
         array $rawResponse
-    ): void {
-        if (!class_exists(DB::class)) {
-            return;
-        }
-
+    ): ?bool {
         try {
-            $updates = [
-                'status'       => $status,
-                'raw_response' => json_encode($rawResponse),
-                'updated_at'   => date('Y-m-d H:i:s'),
-            ];
+            return DB::transaction(function () use ($paymentRefId, $from, $status, $trxId, $clientMobile, $rawResponse): ?bool {
+                $row = DB::table('nagad_transactions')->where('payment_ref_id', $paymentRefId)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (!in_array((string) $row->status, $from, true)) {
+                    return false;
+                }
 
-            if ($trxId !== null) {
-                $updates['issuer_trx_id'] = $trxId;
-            }
-            if ($clientMobile !== null) {
-                $updates['client_mobile_no'] = $clientMobile;
-            }
-
-            DB::table('nagad_transactions')
-                ->where('payment_ref_id', $paymentRefId)
-                ->update($updates);
+                $updates = [
+                    'status'       => $status,
+                    'raw_response' => json_encode($rawResponse),
+                    'updated_at'   => date('Y-m-d H:i:s'),
+                ];
+                if ($trxId !== null) {
+                    $updates['issuer_trx_id'] = $trxId;
+                }
+                if ($clientMobile !== null) {
+                    $updates['client_mobile_no'] = $clientMobile;
+                }
+                DB::table('nagad_transactions')->where('payment_ref_id', $paymentRefId)->update($updates);
+                return true;
+            });
         } catch (Throwable) {
-            // Ignore DB errors during fallback
+            return null;
         }
     }
 }
