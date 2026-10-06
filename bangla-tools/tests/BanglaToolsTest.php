@@ -92,4 +92,12 @@ class BanglaToolsTest extends TestCase
         $this->assertSame('৳ ৫০০', bangla_taka(500));
         $this->assertSame('নতুন-পোস্ট', bangla_slug('নতুন পোস্ট'));
     }
+
+    public function testTemplateDirectivesAreRegistered(): void
+    {
+        require_once dirname(__DIR__) . '/bootstrap.php';
+        $php = (new \System\View\ViewCompiler())->compile("@taka(1500) @bangla_date");
+        $this->assertContains('Bangla::taka(1500)', $php);
+        $this->assertContains('Bangla::date(null)', $php);
+    }
 }

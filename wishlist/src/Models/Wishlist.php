@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bongo\Packages\Wishlist\Models;
 
 use System\Database\Model;
-use System\Database\Relations\HasMany;
+use System\Database\HasMany;
 
 class Wishlist extends Model
 {

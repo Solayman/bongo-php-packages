@@ -270,4 +270,10 @@ class TaggableTest extends TestCase
         $this->assertCount(2, $post->tags());
         $this->assertFalse($post->hasTag('Batch2'));
     }
+
+    public function testRelationsUseTheCoreRelationClasses(): void
+    {
+        $this->assertTrue((new \Bongo\Packages\Taggable\Models\Tag())->taggables() instanceof \System\Database\HasMany, 'taggables() returns a core HasMany');
+        $this->assertTrue((new \Bongo\Packages\Taggable\Models\Taggable())->tag() instanceof \System\Database\BelongsTo, 'tag() returns a core BelongsTo');
+    }
 }

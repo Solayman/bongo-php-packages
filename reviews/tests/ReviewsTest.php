@@ -244,4 +244,10 @@ class ReviewsTest extends TestCase
         $this->assertSame(50.0, $summary['percentages'][5]);
         $this->assertSame(50.0, $summary['percentages'][4]);
     }
+
+    public function testRelationsUseTheCoreRelationClasses(): void
+    {
+        $this->assertTrue((new \Bongo\Packages\Reviews\Models\Review())->votes() instanceof \System\Database\HasMany, 'votes() returns a core HasMany');
+        $this->assertTrue((new \Bongo\Packages\Reviews\Models\ReviewVote())->review() instanceof \System\Database\BelongsTo, 'review() returns a core BelongsTo');
+    }
 }

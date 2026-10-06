@@ -175,4 +175,11 @@ class SettingsTest extends TestCase
         $this->assertSame('gamma', $loaded['batch.key3']);
         $this->assertNull($loaded['batch.nonexistent']);
     }
+
+    public function testTemplateDirectivesAreRegistered(): void
+    {
+        require_once dirname(__DIR__) . '/bootstrap.php';
+        $php = (new \System\View\ViewCompiler())->compile("@setting('site_name')");
+        $this->assertContains('setting(\'site_name\')', $php);
+    }
 }

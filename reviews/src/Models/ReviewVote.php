@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bongo\Packages\Reviews\Models;
 
 use System\Database\Model;
-use System\Database\Relations\BelongsTo;
+use System\Database\BelongsTo;
 
 class ReviewVote extends Model
 {

@@ -209,4 +209,12 @@ class CaptchaTest extends TestCase
             $_POST = [];
         }
     }
+
+    public function testTemplateDirectivesAreRegistered(): void
+    {
+        require_once dirname(__DIR__) . '/bootstrap.php';
+        $php = (new \System\View\ViewCompiler())->compile("@captcha @captchascript");
+        $this->assertContains('Captcha::render([])', $php);
+        $this->assertContains('Captcha::script(null)', $php);
+    }
 }
