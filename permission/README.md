@@ -5,7 +5,7 @@
 <p align="center">
   <img src="docs/screenshot.svg" alt="permission screenshot" width="800">
 </p>
-Official zero-dependency Role-Based Access Control (RBAC) and permissions package for Bongo PHP Framework. Assign roles and permissions to users, guard routes via middleware, manage permissions in Blade templates, and administer roles through the CLI.
+Official zero-dependency Role-Based Access Control (RBAC) and permissions package for Bongo PHP Framework. Assign roles and permissions to users, guard routes via middleware, check permissions in templates (@-directives), and administer roles through the CLI.
 
 ---
 
