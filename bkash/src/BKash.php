@@ -162,6 +162,10 @@ class BKash
     /**
      * Verify and execute a payment upon return from bKash.
      *
+     * The redirect's "status" is only a hint: anyone can open the callback URL. A payment becomes
+     * COMPLETED only when bKash's own API says so, a completed payment is never changed back, and
+     * payment.success / payment.failed fire once per real status change.
+     *
      * @param array $params Query or POST parameters from bKash redirect (paymentID, status)
      * @return array{valid: bool, status: string, trx_id: ?string, payment_id: string, amount: float, raw: array}
      */
@@ -173,35 +177,22 @@ class BKash
         if ($paymentId === '') {
             throw new InvalidArgumentException('Missing paymentID in bKash callback.');
         }
-
-        if ($status === 'cancel') {
-            $this->updateTransactionStatus($paymentId, 'CANCELLED', null, $params);
-            if (class_exists(Event::class)) {
-                Event::dispatch('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'cancelled']);
-            }
-            return [
-                'valid'      => false,
-                'status'     => 'CANCELLED',
-                'trx_id'     => null,
-                'payment_id' => $paymentId,
-                'amount'     => 0.0,
-                'raw'        => $params,
-            ];
+        if (!preg_match('/^[A-Za-z0-9_-]{1,100}$/', $paymentId)) {
+            throw new InvalidArgumentException('Invalid paymentID in bKash callback.');
         }
 
-        if ($status === 'failure') {
-            $this->updateTransactionStatus($paymentId, 'FAILED', null, $params);
-            if (class_exists(Event::class)) {
-                Event::dispatch('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => 'failure']);
+        if ($status === 'cancel' || $status === 'failure') {
+            // Already paid (e.g. a replayed or forged cancel link)? Then it stays paid.
+            $remote = $this->safeQuery($paymentId);
+            if ($this->isPaid($remote)) {
+                return $this->complete($paymentId, $remote, false);
             }
-            return [
-                'valid'      => false,
-                'status'     => 'FAILED',
-                'trx_id'     => null,
-                'payment_id' => $paymentId,
-                'amount'     => 0.0,
-                'raw'        => $params,
-            ];
+
+            $final = $status === 'cancel' ? 'CANCELLED' : 'FAILED';
+            if ($this->transition($paymentId, ['INITIATED'], $final, null, $params) === true && class_exists(Event::class)) {
+                Event::dispatch('payment.failed', ['gateway' => 'bkash', 'payment_id' => $paymentId, 'reason' => $status === 'cancel' ? 'cancelled' : 'failure']);
+            }
+            return $this->result(false, $final, null, $paymentId, 0.0, $params);
         }
 
         // Execute payment on bKash server to finalize transaction
@@ -224,41 +215,26 @@ class BKash
             'Accept: application/json',
         ];
 
-        $payload = ['paymentID' => $paymentId];
-        $response = $this->request($endpoint, 'POST', $payload, $headers);
+        $response = $this->request($endpoint, 'POST', ['paymentID' => $paymentId], $headers);
 
-        $statusCode = (string) ($response['statusCode'] ?? '');
-        $trxStatus = (string) ($response['transactionStatus'] ?? '');
-        $trxId = isset($response['trxID']) ? (string) $response['trxID'] : null;
-        $amount = (float) ($response['amount'] ?? 0.0);
-
-        if ($statusCode === '0000' && ($trxStatus === 'Completed' || $trxStatus === 'Authorized')) {
-            $this->updateTransactionStatus($paymentId, 'COMPLETED', $trxId, $response);
-            $eventPayload = [
-                'gateway'         => 'bkash',
-                'payment_id'      => $paymentId,
-                'trx_id'          => $trxId,
-                'amount'          => $amount,
-                'currency'        => (string) ($response['currency'] ?? $this->currency),
-                'customer_msisdn' => (string) ($response['customerMsisdn'] ?? ''),
-                'raw'             => $response,
-            ];
-            if (class_exists(Event::class)) {
-                Event::dispatch('payment.success', $eventPayload);
-            }
-
-            return [
-                'valid'      => true,
-                'status'     => 'COMPLETED',
-                'trx_id'     => $trxId,
-                'payment_id' => $paymentId,
-                'amount'     => $amount,
-                'raw'        => $response,
-            ];
+        if ($this->isPaid($response)) {
+            return $this->complete($paymentId, $response, true);
         }
 
-        $this->updateTransactionStatus($paymentId, 'FAILED', $trxId, $response);
-        if (class_exists(Event::class)) {
+        // Execute refuses a payment that was already executed: ask bKash for the real state
+        $remote = $this->safeQuery($paymentId);
+        if ($this->isPaid($remote)) {
+            return $this->complete($paymentId, $remote, false);
+        }
+
+        $trxId = isset($response['trxID']) ? (string) $response['trxID'] : null;
+        $remoteStatus = strtolower((string) ($remote['transactionStatus'] ?? ''));
+        if ($remoteStatus === '' || $remoteStatus === 'initiated' || $remoteStatus === 'inprogress') {
+            // Not finished yet (or bKash unreachable): leave the stored state alone
+            return $this->result(false, 'PENDING', $trxId, $paymentId, 0.0, $response);
+        }
+
+        if ($this->transition($paymentId, ['INITIATED'], 'FAILED', $trxId, $response) === true && class_exists(Event::class)) {
             Event::dispatch('payment.failed', [
                 'gateway'    => 'bkash',
                 'payment_id' => $paymentId,
@@ -267,13 +243,61 @@ class BKash
             ]);
         }
 
+        return $this->result(false, 'FAILED', $trxId, $paymentId, (float) ($response['amount'] ?? 0.0), $response);
+    }
+
+    /** bKash says the money was taken */
+    protected function isPaid(array $response): bool
+    {
+        return (string) ($response['statusCode'] ?? '') === '0000'
+            && in_array((string) ($response['transactionStatus'] ?? ''), ['Completed', 'Authorized'], true);
+    }
+
+    /**
+     * Mark COMPLETED and fire payment.success the first time only.
+     * $fromExecute: this request executed the payment, so with no stored row (table not migrated) it is still the first time.
+     */
+    protected function complete(string $paymentId, array $response, bool $fromExecute): array
+    {
+        $trxId = isset($response['trxID']) ? (string) $response['trxID'] : null;
+        $amount = (float) ($response['amount'] ?? 0.0);
+
+        $changed = $this->transition($paymentId, ['INITIATED', 'CANCELLED', 'FAILED'], 'COMPLETED', $trxId, $response);
+        if (($changed === true || ($changed === null && $fromExecute)) && class_exists(Event::class)) {
+            Event::dispatch('payment.success', [
+                'gateway'         => 'bkash',
+                'payment_id'      => $paymentId,
+                'trx_id'          => $trxId,
+                'invoice_no'      => $this->invoiceNo($paymentId) ?? (string) ($response['merchantInvoiceNumber'] ?? ''),
+                'amount'          => $amount,
+                'currency'        => (string) ($response['currency'] ?? $this->currency),
+                'customer_msisdn' => (string) ($response['customerMsisdn'] ?? ''),
+                'raw'             => $response,
+            ]);
+        }
+
+        return $this->result(true, 'COMPLETED', $trxId, $paymentId, $amount, $response);
+    }
+
+    /** query() that never throws: [] when bKash cannot be reached */
+    protected function safeQuery(string $paymentId): array
+    {
+        try {
+            return $this->query($paymentId);
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    protected function result(bool $valid, string $status, ?string $trxId, string $paymentId, float $amount, array $raw): array
+    {
         return [
-            'valid'      => false,
-            'status'     => 'FAILED',
+            'valid'      => $valid,
+            'status'     => $status,
             'trx_id'     => $trxId,
             'payment_id' => $paymentId,
             'amount'     => $amount,
-            'raw'        => $response,
+            'raw'        => $raw,
         ];
     }
 
@@ -402,18 +426,42 @@ class BKash
         }
     }
 
-    protected function updateTransactionStatus(string $paymentId, string $status, ?string $trxId, array $raw): void
+    /**
+     * Change the stored status inside a row lock, only from one of $from.
+     * true = changed, false = not allowed (e.g. already COMPLETED), null = no stored row (table not migrated).
+     */
+    protected function transition(string $paymentId, array $from, string $to, ?string $trxId, array $raw): ?bool
     {
         try {
-            DB::table('bkash_transactions')->where('payment_id', $paymentId)->update([
-                'status'          => $status,
-                'trx_id'          => $trxId,
-                'customer_msisdn' => $raw['customerMsisdn'] ?? null,
-                'raw_response'    => json_encode($raw),
-                'updated_at'      => date('Y-m-d H:i:s'),
-            ]);
+            return DB::transaction(function () use ($paymentId, $from, $to, $trxId, $raw): ?bool {
+                $row = DB::table('bkash_transactions')->where('payment_id', $paymentId)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (!in_array((string) $row->status, $from, true)) {
+                    return false;
+                }
+                DB::table('bkash_transactions')->where('payment_id', $paymentId)->update([
+                    'status'          => $to,
+                    'trx_id'          => $trxId ?? $row->trx_id,
+                    'customer_msisdn' => $raw['customerMsisdn'] ?? $row->customer_msisdn,
+                    'raw_response'    => json_encode($raw),
+                    'updated_at'      => date('Y-m-d H:i:s'),
+                ]);
+                return true;
+            });
         } catch (Throwable $e) {
-            // Non-fatal if table doesn't exist
+            return null;   // no bkash_transactions table yet
+        }
+    }
+
+    protected function invoiceNo(string $paymentId): ?string
+    {
+        try {
+            $row = DB::table('bkash_transactions')->where('payment_id', $paymentId)->first();
+            return $row ? (string) $row->invoice_no : null;
+        } catch (Throwable $e) {
+            return null;
         }
     }
 }
