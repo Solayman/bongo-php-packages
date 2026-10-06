@@ -1,0 +1,18 @@
+{
+    "name": "push-notification",
+    "description": "Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) notification engine",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\PushNotification\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/push.php",
+    "commands": [
+        "Bongo\\Packages\\PushNotification\\Commands\\PushSendCommand"
+    ]
+}

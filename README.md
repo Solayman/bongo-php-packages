@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-274%20passed%20(1155%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-299%20passed%20(1239%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **274 automated unit and integration tests (1,155 assertions)** across 36 official packages.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **299 automated unit and integration tests (1,239 assertions)** across 40 official packages.
 
 ---
 
@@ -51,6 +51,10 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`courier`](#34-courier-v100) | Logistics | 1.0.0 | Bangladesh courier and logistics engine for Steadfast and Pathao Courier with tracking, order creation, balance lookup and webhooks | `php bongo add courier` |
 | [`invoice`](#35-invoice-v100) | E-Commerce & Billing | 1.0.0 | Professional invoice and POS thermal receipt generator with A4 print CSS, VAT/tax, discounts, shipping, and XSS sanitization | `php bongo add invoice` |
 | [`whatsapp`](#36-whatsapp-v100) | Communications | 1.0.0 | Meta WhatsApp Business Cloud API client for transactional messages, OTP templates, media & webhooks | `php bongo add whatsapp` |
+| [`currency`](#37-currency-v100) | E-Commerce & Fintech | 1.0.0 | Multi-currency conversion, live exchange rate caching, and localized money formatting engine | `php bongo add currency` |
+| [`coupon`](#38-coupon-v100) | E-Commerce & Marketing | 1.0.0 | E-commerce promotions, voucher codes, percentage/fixed discounts, and cart calculation engine | `php bongo add coupon` |
+| [`push-notification`](#39-push-notification-v100) | Messaging & PWA | 1.0.0 | Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) notification engine | `php bongo add push-notification` |
+| [`geoip`](#40-geoip-v100) | Intelligence & Security | 1.0.0 | IP address geolocation, visitor country resolution, and currency/timezone detection engine | `php bongo add geoip` |
 
 ---
 
@@ -485,6 +489,55 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 
 ---
 
+### 37. `currency` (v1.0.0)
+**Multi-Currency Conversion & Exchange Rate Engine**
+- **Problem Solved:** Global and multi-market e-commerce platforms need live exchange rate tracking, currency switching, and localized currency formatting without bloated extensions.
+- **Architecture & Highlights:**
+  - Dynamic rate manager with base-currency bridging and automatic inverse rate calculation.
+  - Fluent converter: `currency(100)->from('USD')->to('BDT')`.
+  - Localized formatting with correct symbol placement: `currency(1250)->format('BDT')` (`৳1,250.00`), `format('USD')` (`$1,250.00`), `format('SAR')` (`1,250.00 SAR`).
+  - CLI rate inspector: `php bongo currency:update`.
+- **Install:** `php bongo add currency`
+
+---
+
+### 38. `coupon` (v1.0.0)
+**E-Commerce Promotions & Voucher Codes Engine**
+- **Problem Solved:** E-commerce stores need flexible marketing discount codes (percentages, fixed amounts, free shipping) with usage caps and minimum thresholds.
+- **Architecture & Highlights:**
+  - Fluent discount builder supporting `percentage` (with optional `maxDiscount` cap), `fixed`, and `free_shipping`.
+  - Multi-rule constraints: `minOrder()`, `startsAt()`, `expiresAt()`, `usageLimit()`, `active()`.
+  - Comprehensive result object (`CouponResult`) detailing subtotal discount, shipping discount, and new total.
+  - CLI coupon validator: `php bongo coupon:check <code> [amount]`.
+- **Install:** `php bongo add coupon`
+
+---
+
+### 39. `push-notification` (v1.0.0)
+**Web Push (RFC 8292) & Firebase Cloud Messaging (FCM v1)**
+- **Problem Solved:** Delivering instant push notifications to progressive web apps (PWAs), desktop browsers, and mobile devices without third-party Composer SDKs.
+- **Architecture & Highlights:**
+  - Zero-dependency Web Push implementation with VAPID JWT generation (RFC 8292) and payload dispatching.
+  - Firebase Cloud Messaging (FCM HTTP v1) client for mobile device tokens.
+  - Native fake testing mode (`Push::fake()`) for testing in CI/CD without network requests.
+  - CLI push dispatcher: `php bongo push:send <target> [title] [body]`.
+- **Install:** `php bongo add push-notification`
+
+---
+
+### 40. `geoip` (v1.0.0)
+**IP Geolocation & Visitor Location Detection**
+- **Problem Solved:** Resolving visitor geographic location (country, city, timezone, currency) from client IP addresses for localized pricing and fraud prevention.
+- **Architecture & Highlights:**
+  - Automatic visitor IP extraction supporting Cloudflare (`CF-Connecting-IP`) and reverse proxy headers.
+  - Private and loopback IP range detection (`127.0.0.1`, `10.*`, `192.168.*`) returning configurable default location.
+  - In-memory cache to prevent redundant HTTP requests for repeated IP addresses.
+  - Fluent helper: `geoip()->countryCode()`, `geoip()->is('BD')`, `geoip()->currency`.
+  - CLI lookup utility: `php bongo geoip:lookup <ip>`.
+- **Install:** `php bongo add geoip`
+
+---
+
 ## 🛠️ Package Management CLI Reference
 
 All packages integrate directly with the Bongo CLI:
@@ -522,11 +575,11 @@ php bongo package:test <package-name>
 The package suite includes an automated test runner (`run_tests.php`) using Bongo's built-in testing engine via the `BongoMvc` junction:
 
 ```bash
-# Run tests across all 36 packages
+# Run tests across all 40 packages
 php run_tests.php
 
 # Expected result:
-# Tests: 274 passed (1155 assertions) across 36 packages
+# Tests: 299 passed (1239 assertions) across 40 packages
 ```
 
 ---

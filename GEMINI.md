@@ -2,7 +2,7 @@
 
 ## 1. Multi-Repository Workspace Structure (`D:\laravel\framework\`)
 - **`bongo-php`**: Core framework repository (`solayman` branch for active development, `master` for production).
-- **`bongo-php-packages`**: Official package suite repository containing all 36 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`, `toast`, `sweet-alert`, `zoom`, `google-meet`, `courier`, `invoice`, `whatsapp`) with 274 passing package tests (1,155 assertions).
+- **`bongo-php-packages`**: Official package suite repository containing all 40 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`, `toast`, `sweet-alert`, `zoom`, `google-meet`, `courier`, `invoice`, `whatsapp`, `currency`, `coupon`, `push-notification`, `geoip`) with 299 passing package tests (1,239 assertions).
 - **`bongo-package-and-feature-test`**: Official testbed and application sandbox with 42 passing feature tests (449 assertions). **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
 - **`BongoMvc`**: Directory junction linking to `bongo-php` for seamless package test runner (`run_tests.php`) execution.
 - **`bongo-test`**: Directory junction linking to `bongo-package-and-feature-test`.
@@ -36,7 +36,7 @@
 
 ---
 
-## 5. Official Packages Suite Overview (36 Packages)
+## 5. Official Packages Suite Overview (40 Packages)
 1. **`sslcommerz`** (1.0.0): SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, checkout views, translations, and `php bongo sslcommerz:check`.
 2. **`bkash`** (1.0.0): bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, checkout views, translations, and `php bongo bkash:check`.
 3. **`sms`** (1.0.0): Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS, and log driver) with 6-digit cryptographic phone OTP generation, attempt throttling, verification, views, and natural Bengali localization.
@@ -73,12 +73,16 @@
 34. **`courier`** (1.0.0): Bangladesh courier and logistics engine for Steadfast and Pathao Courier with automated consignment creation, live delivery tracking, merchant balance inquiry, unified webhook normalizer, and CLI command `courier:track`.
 35. **`invoice`** (1.0.0): Professional invoice and POS thermal receipt generator with fluent builder, subtotal/tax/discount/shipping calculation, print-optimized A4 `@media print` layout, 80mm/58mm thermal receipt layout (`renderPos()`), XSS protection, and `invoice()` global helper.
 36. **`whatsapp`** (1.0.0): Meta WhatsApp Business Cloud API client for transactional messages, 6-digit OTP template verification, media dispatch (invoices/images/video), webhook subscription handshake, HMAC-SHA256 signature verification, `WhatsApp::fake()` testing, and CLI `whatsapp:send`.
+37. **`currency`** (1.0.0): Multi-currency conversion, live exchange rate caching, base-currency bridging, and localized money formatting engine (`৳1,250.00`, `$99.99`, `150.00 SAR`) with CLI command `currency:update`.
+38. **`coupon`** (1.0.0): E-commerce promotions and vouchers engine supporting percentage discounts (with max cap), fixed discounts, free shipping, minimum order thresholds, usage caps, and CLI command `coupon:check`.
+39. **`push-notification`** (1.0.0): Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) client with JWT ES256 authentication, payload formatting, offline mock, and CLI command `push:send`.
+40. **`geoip`** (1.0.0): IP address geolocation, visitor country/city/timezone/currency resolution, reverse proxy and Cloudflare IP extraction, in-memory caching, and CLI command `geoip:lookup`.
 
 ---
 
 ## 6. Package Development Standards
 - **Zero Required External Dependencies**: Pure PHP 8.0+, no Composer packages, no Node.js runtime.
 - **PSR-12 Standard**: 0 errors checked via `php phpcs.phar`.
-- **Test Suite**: Run `php run_tests.php` to verify all 274 package tests (1,155 assertions) across all 36 packages with 0 errors.
+- **Test Suite**: Run `php run_tests.php` to verify all 299 package tests (1,239 assertions) across all 40 packages with 0 errors.
 - **Namespaced Assets**: Views must use `name::view` and translations must use `name::key`.
 - **App Override Priority**: Never hardcode paths that prevent `resources/views/vendor/<name>/` overrides.
