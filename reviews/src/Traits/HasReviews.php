@@ -132,16 +132,68 @@ trait HasReviews
     /**
      * Get percentage of reviews with a specific star rating.
      */
-    public function ratingPercentage(int $star, bool $approvedOnly = true): float
+    public function ratingPercentage(int $star, bool $approvedOnly = true, ?array $distribution = null, ?int $total = null): float
     {
-        $total = $this->reviewsCount($approvedOnly);
-        if ($total === 0) {
-            return 0.0;
+        if ($distribution !== null && $total !== null) {
+            if ($total === 0) {
+                return 0.0;
+            }
+            return round((($distribution[$star] ?? 0) / $total) * 100, 1);
         }
 
-        $dist = $this->ratingDistribution($approvedOnly);
-        $count = $dist[$star] ?? 0;
+        $summary = $this->ratingSummary($approvedOnly);
+        return $summary['percentages'][$star] ?? 0.0;
+    }
 
-        return round(($count / $total) * 100, 1);
+    /**
+     * Get complete rating summary (average, count, distribution, percentages) in a single database query.
+     *
+     * @return array{average: float, count: int, distribution: array<int, int>, percentages: array<int, float>}
+     */
+    public function ratingSummary(bool $approvedOnly = true): array
+    {
+        $min = function_exists('config') ? (int) config('reviews.min_rating', 1) : 1;
+        $max = function_exists('config') ? (int) config('reviews.max_rating', 5) : 5;
+
+        $dist = [];
+        $percentages = [];
+        for ($i = $max; $i >= $min; $i--) {
+            $dist[$i] = 0;
+            $percentages[$i] = 0.0;
+        }
+
+        $query = $approvedOnly ? $this->approvedReviews() : $this->reviews();
+        $reviews = $query->get();
+        $total = count($reviews);
+
+        if ($total === 0) {
+            return [
+                'average' => 0.0,
+                'count' => 0,
+                'distribution' => $dist,
+                'percentages' => $percentages,
+            ];
+        }
+
+        $sum = 0;
+        foreach ($reviews as $rev) {
+            $r = (int) $rev->rating;
+            $sum += $r;
+            if (isset($dist[$r])) {
+                $dist[$r]++;
+            }
+        }
+
+        $average = round($sum / $total, 1);
+        foreach ($dist as $star => $cnt) {
+            $percentages[$star] = round(($cnt / $total) * 100, 1);
+        }
+
+        return [
+            'average' => $average,
+            'count' => $total,
+            'distribution' => $dist,
+            'percentages' => $percentages,
+        ];
     }
 }

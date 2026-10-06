@@ -19,11 +19,23 @@ class Feature
     /** @var array<string, bool> */
     protected static array $fakeFlags = [];
 
+    /** @var array<string, bool> Runtime request cache */
+    protected static array $runtimeCache = [];
+
+    /**
+     * Flush the in-memory runtime cache.
+     */
+    public static function flushCache(): void
+    {
+        self::$runtimeCache = [];
+    }
+
     /**
      * Define a feature and its resolution logic.
      */
     public static function define(string $feature, Closure|bool $resolver): void
     {
+        self::$runtimeCache = [];
         self::$definitions[$feature] = $resolver;
     }
 
@@ -37,7 +49,24 @@ class Feature
         }
 
         $resolvedScope = self::resolveScope($scope);
+        $cacheKey = $feature . '::' . $resolvedScope;
+        if (array_key_exists($cacheKey, self::$runtimeCache)) {
+            return self::$runtimeCache[$cacheKey];
+        }
 
+        $result = self::resolveFeatureActive($feature, $scope, $resolvedScope);
+        if (count(self::$runtimeCache) < 1000) {
+            self::$runtimeCache[$cacheKey] = $result;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Internal feature resolution logic.
+     */
+    protected static function resolveFeatureActive(string $feature, mixed $scope, string $resolvedScope): bool
+    {
         // 1. Check in-memory registered definitions
         if (isset(self::$definitions[$feature])) {
             $resolver = self::$definitions[$feature];
@@ -97,6 +126,7 @@ class Feature
      */
     public static function activate(string $feature, mixed $scope = null): void
     {
+        self::$runtimeCache = [];
         if (self::$fake) {
             self::$fakeFlags[$feature] = true;
             return;
@@ -110,6 +140,7 @@ class Feature
      */
     public static function deactivate(string $feature, mixed $scope = null): void
     {
+        self::$runtimeCache = [];
         if (self::$fake) {
             self::$fakeFlags[$feature] = false;
             return;
@@ -123,6 +154,7 @@ class Feature
      */
     public static function rollout(string $feature, int $percentage, mixed $scope = null): void
     {
+        self::$runtimeCache = [];
         $percentage = max(0, min(100, $percentage));
 
         if (self::$fake) {
@@ -138,6 +170,7 @@ class Feature
      */
     public static function forget(string $feature, mixed $scope = null): void
     {
+        self::$runtimeCache = [];
         if (self::$fake) {
             unset(self::$fakeFlags[$feature]);
             return;
@@ -209,6 +242,7 @@ class Feature
      */
     public static function fake(array $flags = []): void
     {
+        self::$runtimeCache = [];
         self::$fake = true;
         self::$fakeFlags = $flags;
     }
@@ -218,6 +252,7 @@ class Feature
      */
     public static function stopFaking(): void
     {
+        self::$runtimeCache = [];
         self::$fake = false;
         self::$fakeFlags = [];
         self::$definitions = [];

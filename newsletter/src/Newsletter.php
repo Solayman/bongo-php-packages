@@ -12,6 +12,16 @@ class Newsletter
     protected static bool $faking = false;
     /** @var array<int, array<string, mixed>> */
     protected static array $fakeSubscribers = [];
+    /** @var array<string, bool> */
+    protected static array $statusCache = [];
+
+    /**
+     * Clear memoized subscription status cache.
+     */
+    public static function flushCache(): void
+    {
+        static::$statusCache = [];
+    }
 
     /**
      * Enable fake mode for tests.
@@ -20,6 +30,7 @@ class Newsletter
     {
         static::$faking = true;
         static::$fakeSubscribers = [];
+        static::$statusCache = [];
         return new static();
     }
 
@@ -32,6 +43,7 @@ class Newsletter
     {
         static::$faking = false;
         static::$fakeSubscribers = [];
+        static::$statusCache = [];
     }
 
     /**
@@ -103,6 +115,7 @@ class Newsletter
             }
             $existing->save();
 
+            static::$statusCache[$email] = ($existing->status === 'subscribed');
             return $existing;
         }
 
@@ -123,6 +136,7 @@ class Newsletter
         ]);
         $subscriber->save();
 
+        static::$statusCache[$email] = ($subscriber->status === 'subscribed');
         return $subscriber;
     }
 
@@ -144,7 +158,9 @@ class Newsletter
                     $item['status'] = 'subscribed';
                     $item['token'] = null;
                     $item['verified_at'] = $now;
-                    return new Subscriber($item);
+                    $sub = new Subscriber($item);
+                    static::$statusCache[strtolower((string) $sub->email)] = true;
+                    return $sub;
                 }
             }
             return null;
@@ -161,6 +177,7 @@ class Newsletter
         $subscriber->verified_at = $now;
         $subscriber->save();
 
+        static::$statusCache[strtolower((string) $subscriber->email)] = true;
         return $subscriber;
     }
 
@@ -181,6 +198,10 @@ class Newsletter
                 if (($item['unsubscribe_token'] ?? '') === $tokenOrEmail || strtolower($item['email'] ?? '') === $target) {
                     $item['status'] = 'unsubscribed';
                     $item['unsubscribed_at'] = $now;
+                    static::$statusCache[$target] = false;
+                    if (isset($item['email'])) {
+                        static::$statusCache[strtolower((string) $item['email'])] = false;
+                    }
                     return true;
                 }
             }
@@ -201,6 +222,11 @@ class Newsletter
         $subscriber->unsubscribed_at = $now;
         $subscriber->save();
 
+        static::$statusCache[$target] = false;
+        if (!empty($subscriber->email)) {
+            static::$statusCache[strtolower((string) $subscriber->email)] = false;
+        }
+
         return true;
     }
 
@@ -214,19 +240,31 @@ class Newsletter
             return false;
         }
 
+        if (isset(static::$statusCache[$email])) {
+            return static::$statusCache[$email];
+        }
+
         if (static::$faking) {
             foreach (static::$fakeSubscribers as $item) {
                 if (strtolower($item['email'] ?? '') === $email && ($item['status'] ?? '') === 'subscribed') {
+                    static::$statusCache[$email] = true;
                     return true;
                 }
             }
+            static::$statusCache[$email] = false;
             return false;
         }
 
-        return Subscriber::query()
+        $exists = Subscriber::query()
             ->where('email', $email)
             ->where('status', 'subscribed')
             ->exists();
+
+        if (count(static::$statusCache) < 1000) {
+            static::$statusCache[$email] = $exists;
+        }
+
+        return $exists;
     }
 
     /**

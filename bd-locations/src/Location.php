@@ -7,6 +7,9 @@ class Location
     protected static ?array $divisions = null;
     protected static ?array $districts = null;
     protected static ?array $upazilas = null;
+    protected static ?array $districtsByDivision = null;
+    protected static ?array $upazilasByDistrict = null;
+    protected static ?array $upazilasById = null;
 
     public static function divisions(): array
     {
@@ -36,13 +39,17 @@ class Location
     {
         if (static::$districts === null) {
             static::$districts = require __DIR__ . '/Data/districts.php';
+            static::$districtsByDivision = [];
+            foreach (static::$districts as $d) {
+                static::$districtsByDivision[(int) $d['division_id']][] = $d;
+            }
         }
 
         if ($divisionId === null) {
             return static::$districts;
         }
 
-        return array_values(array_filter(static::$districts, fn($d) => (int) $d['division_id'] === (int) $divisionId));
+        return static::$districtsByDivision[(int) $divisionId] ?? [];
     }
 
     public static function district(int|string $idOrName): ?array
@@ -65,25 +72,26 @@ class Location
     {
         if (static::$upazilas === null) {
             static::$upazilas = require __DIR__ . '/Data/upazilas.php';
+            static::$upazilasByDistrict = [];
+            static::$upazilasById = [];
+            foreach (static::$upazilas as $u) {
+                static::$upazilasByDistrict[(int) $u['district_id']][] = $u;
+                static::$upazilasById[(int) $u['id']] = $u;
+            }
         }
 
         if ($districtId === null) {
             return static::$upazilas;
         }
 
-        return array_values(array_filter(static::$upazilas, fn($u) => (int) $u['district_id'] === (int) $districtId));
+        return static::$upazilasByDistrict[(int) $districtId] ?? [];
     }
 
     public static function upazila(int|string $idOrName): ?array
     {
         $upazilas = static::upazilas();
         if (is_numeric($idOrName)) {
-            foreach ($upazilas as $u) {
-                if ((int) $u['id'] === (int) $idOrName) {
-                    return $u;
-                }
-            }
-            return null;
+            return static::$upazilasById[(int) $idOrName] ?? null;
         }
 
         $needle = strtolower(trim((string) $idOrName));
