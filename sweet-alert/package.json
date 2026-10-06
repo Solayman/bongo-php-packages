@@ -1,0 +1,15 @@
+{
+    "name": "sweet-alert",
+    "description": "Zero-dependency modal alert and confirmation dialog engine with promise callbacks and danger prompts",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\SweetAlert\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/sweet-alert.php"
+}

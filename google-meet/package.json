@@ -1,0 +1,18 @@
+{
+    "name": "google-meet",
+    "description": "Zero-dependency Google Meet and Calendar API client with Service Account RS256 JWT auth",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\GoogleMeet\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/google-meet.php",
+    "commands": [
+        "Bongo\\Packages\\GoogleMeet\\Commands\\GoogleMeetCommand"
+    ]
+}
