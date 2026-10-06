@@ -2,7 +2,7 @@
 
 ## 1. Multi-Repository Workspace Structure (`D:\laravel\framework\`)
 - **`bongo-php`**: Core framework repository (`solayman` branch for active development, `master` for production).
-- **`bongo-php-packages`**: Official package suite repository containing all 29 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`) with 232 passing package tests (980 assertions).
+- **`bongo-php-packages`**: Official package suite repository containing all 33 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`, `toast`, `sweet-alert`, `zoom`, `google-meet`) with 254 passing package tests (1,082 assertions).
 - **`bongo-package-and-feature-test`**: Official testbed and application sandbox with 42 passing feature tests (449 assertions). **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
 - **`BongoMvc`**: Directory junction linking to `bongo-php` for seamless package test runner (`run_tests.php`) execution.
 - **`bongo-test`**: Directory junction linking to `bongo-package-and-feature-test`.
@@ -36,7 +36,7 @@
 
 ---
 
-## 5. Official Packages Suite Overview (29 Packages)
+## 5. Official Packages Suite Overview (33 Packages)
 1. **`sslcommerz`** (1.0.0): SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, checkout views, translations, and `php bongo sslcommerz:check`.
 2. **`bkash`** (1.0.0): bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, checkout views, translations, and `php bongo bkash:check`.
 3. **`sms`** (1.0.0): Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS, and log driver) with 6-digit cryptographic phone OTP generation, attempt throttling, verification, views, and natural Bengali localization.
@@ -66,12 +66,16 @@
 27. **`impersonate`** (1.0.0): Admin user impersonation with secure session swapping, session guarding, floating leave bar, and activity log tracking.
 28. **`queue-monitor`** (1.0.0): Dark-themed web dashboard for Bongo background queue jobs, pending counts, driver telemetry, and failed job retries/flushing.
 29. **`discord`** (1.0.0): Discord webhook alerts, notifications, and rich embed builder with color-coded severity levels, global helpers, and CLI commands `discord:send` / `discord:test`.
+30. **`toast`** (1.0.0): Zero-dependency flash and dynamic toast notification system with animated progress duration bar, auto-dismiss timers, custom positions, session flash integration (`toast()->success(...)`), and client JS API.
+31. **`sweet-alert`** (1.0.0): Modern zero-dependency modal alert and confirmation dialog engine with promise callbacks, danger prompts, backdrop blur, ESC key dismiss, and `SweetAlert::dangerConfirm(...)`.
+32. **`zoom`** (1.0.0): Zoom Video Communications API client with Server-to-Server OAuth authorization, meeting management (`zoom()->createMeeting(...)`), registrants, CRC URL validation, and HMAC-SHA256 webhook verification.
+33. **`google-meet`** (1.0.0): Google Meet and Calendar API client with pure-PHP Service Account RS256 JWT authorization, meeting generation (`hangoutLink`), attendee invites, and CLI command `meet:create`.
 
 ---
 
 ## 6. Package Development Standards
 - **Zero Required External Dependencies**: Pure PHP 8.0+, no Composer packages, no Node.js runtime.
 - **PSR-12 Standard**: 0 errors checked via `php phpcs.phar`.
-- **Test Suite**: Run `php run_tests.php` to verify all 232 package tests (980 assertions) across all 29 packages with 0 errors.
+- **Test Suite**: Run `php run_tests.php` to verify all 254 package tests (1,082 assertions) across all 33 packages with 0 errors.
 - **Namespaced Assets**: Views must use `name::view` and translations must use `name::key`.
 - **App Override Priority**: Never hardcode paths that prevent `resources/views/vendor/<name>/` overrides.

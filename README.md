@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-232%20passed%20(980%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-254%20passed%20(1082%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **232 automated unit and integration tests (980 assertions)** across 29 official packages.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **254 automated unit and integration tests (1,082 assertions)** across 33 official packages.
 
 ---
 
@@ -44,6 +44,10 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`seo`](#18-seo-v100) | Marketing | 1.0.0 | SEO metadata suite with OpenGraph, Twitter Cards, Schema.org JSON-LD structured data, and dynamic XML sitemaps | `php bongo add seo` |
 | [`activity-log`](#19-activity-log-v100) | Auditing | 1.0.0 | Enterprise audit trail and model activity logger with old vs new diff tracking, client telemetry, and retention cleanup | `php bongo add activity-log` |
 | [`health`](#20-health-v100) | Monitoring | 1.0.0 | Production uptime monitoring and health check suite for Database, Storage, Cache, Redis, and Disk Space with JSON endpoint | `php bongo add health` |
+| [`toast`](#30-toast-v100) | UI Components | 1.0.0 | Zero-dependency flash and dynamic toast notification system with auto-dismiss and progress bars | `php bongo add toast` |
+| [`sweet-alert`](#31-sweet-alert-v100) | UI Components | 1.0.0 | Zero-dependency modal alert and confirmation dialog engine with promise callbacks and danger prompts | `php bongo add sweet-alert` |
+| [`zoom`](#32-zoom-v100) | Communications | 1.0.0 | Zero-dependency Zoom Video Communications API client for meetings, registrants, OAuth and webhooks | `php bongo add zoom` |
+| [`google-meet`](#33-google-meet-v100) | Communications | 1.0.0 | Zero-dependency Google Meet and Calendar API client with Service Account RS256 JWT auth | `php bongo add google-meet` |
 
 ---
 
@@ -398,6 +402,44 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
   - Template directives: `@bangla_number`, `@bangla_date`, `@taka`.
 - **Install:** `php bongo add bangla-tools`
 
+### 30. `toast` (v1.0.0)
+**Zero-Dependency Flash & Dynamic Toast Notification System**
+- **Architecture & Highlights:**
+  - Stackable flash toasts (`success`, `error`, `warning`, `info`).
+  - Smooth slide/fade animations with animated progress duration bar and close controls.
+  - Position control (`top-right`, `top-left`, `top-center`, `bottom-right`, `bottom-left`, `bottom-center`).
+  - Session flash helper: `toast()->success('Saved!')` and client JS API: `window.bongoToast.show(...)`.
+  - Stored XSS defense: strict UTF-8 escaping.
+- **Install:** `php bongo add toast`
+
+### 31. `sweet-alert` (v1.0.0)
+**Zero-Dependency Modal Alert & Confirmation Dialog Engine**
+- **Architecture & Highlights:**
+  - Modern modal replacement for browser `alert()` and `confirm()`.
+  - Supports promise-based callbacks (`window.BongoAlert.confirm(...)`).
+  - Danger action confirm styling (`SweetAlert::dangerConfirm('Delete?', 'Cannot be undone')`).
+  - Backdrop blur, ESC key dismiss, and custom color/button text themes.
+- **Install:** `php bongo add sweet-alert`
+
+### 32. `zoom` (v1.0.0)
+**Zoom Video Communications API Client**
+- **Architecture & Highlights:**
+  - Pure-PHP Server-to-Server OAuth bearer token authorization.
+  - Meeting creation, retrieval, updates, and deletion (`zoom()->createMeeting(...)`).
+  - Meeting registrants management and password protection.
+  - Webhook CRC endpoint URL validation and HMAC-SHA256 signature verification.
+  - CLI meeting generator: `php bongo zoom:create --topic="..." --duration=45`.
+- **Install:** `php bongo add zoom`
+
+### 33. `google-meet` (v1.0.0)
+**Google Meet & Calendar API Client**
+- **Architecture & Highlights:**
+  - Pure-PHP Google Service Account RS256 JWT authorization (zero external SDKs).
+  - Creates Google Calendar events with attached Google Meet video call spaces (`hangoutLink`).
+  - Invites attendees and manages scheduled event lifecycles.
+  - CLI meeting generator: `php bongo meet:create --summary="..." --duration=45`.
+- **Install:** `php bongo add google-meet`
+
 ---
 
 ## 🛠️ Package Management CLI Reference
@@ -437,11 +479,11 @@ php bongo package:test <package-name>
 The package suite includes an automated test runner (`run_tests.php`) using Bongo's built-in testing engine via the `BongoMvc` junction:
 
 ```bash
-# Run tests across all 24 packages
+# Run tests across all 33 packages
 php run_tests.php
 
 # Expected result:
-# Tests: 208 passed (853 assertions) across 24 packages
+# Tests: 254 passed (1082 assertions) across 33 packages
 ```
 
 ---
