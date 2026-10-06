@@ -1,0 +1,16 @@
+{
+    "name": "wishlist",
+    "description": "Zero-dependency customer wishlist management with guest session merging, shareable links, and multi-list support",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Wishlist\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/wishlist.php",
+    "migrations": "database/migrations"
+}

@@ -573,6 +573,58 @@
           }
         }
       }
+    },
+    "sluggable": {
+      "name": "sluggable",
+      "latest": "1.0.0",
+      "description": "High-performance multilingual and Bengali Unicode URL slug generator with collision handling and model trait",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "wishlist": {
+      "name": "wishlist",
+      "latest": "1.0.0",
+      "description": "Customer wishlist management with guest session merging, shareable links, and multi-list support",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "reviews": {
+      "name": "reviews",
+      "latest": "1.0.0",
+      "description": "Ratings and reviews system for products and models with verified buyer badges, moderation workflows, and helpful voting",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "feature-flags": {
+      "name": "feature-flags",
+      "latest": "1.0.0",
+      "description": "Dynamic feature flags, canary rollouts, user targeting, and percentage rollouts for Bongo PHP",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

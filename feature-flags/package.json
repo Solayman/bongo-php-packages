@@ -1,0 +1,20 @@
+{
+    "name": "feature-flags",
+    "description": "Dynamic feature flags, canary rollouts, user targeting, and percentage rollouts for Bongo PHP",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\FeatureFlags\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/feature-flags.php",
+    "migrations": "database/migrations",
+    "commands": [
+        "Bongo\\Packages\\FeatureFlags\\Commands\\FeatureListCommand",
+        "Bongo\\Packages\\FeatureFlags\\Commands\\FeatureToggleCommand"
+    ]
+}
