@@ -15,7 +15,7 @@ class BKashController
      */
     public function callback(Request $request): string
     {
-        $paymentId = (string) $request->get('paymentID', $request->get('payment_id', ''));
+        $paymentId = (string) $request->input('paymentID', $request->input('payment_id', ''));
 
         try {
             // verify() asks bKash for the real state; the "status" in this URL is only a hint
@@ -48,7 +48,7 @@ class BKashController
     {
         try {
             // Server-to-server: only the payment id is used, the state always comes from bKash's API
-            $paymentId = (string) $request->get('paymentID', $request->get('payment_id', ''));
+            $paymentId = (string) $request->input('paymentID', $request->input('payment_id', ''));
             $verified = (new BKash())->verify(['paymentID' => $paymentId]);
             return ['status' => 'OK', 'verified' => $verified['valid']];
         } catch (Throwable $e) {

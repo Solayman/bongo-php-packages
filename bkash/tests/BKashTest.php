@@ -274,4 +274,20 @@ class BKashTest extends TestCase
         $this->assertThrows(InvalidArgumentException::class, fn() => $gateway->verify(['paymentID' => '../../x']));
         $this->assertThrows(InvalidArgumentException::class, fn() => $gateway->verify(['paymentID' => '']));
     }
+
+    public function testCallbackControllerHandlesTheRedirect(): void
+    {
+        \System\View\ViewEngine::addNamespace('bkash', dirname(__DIR__) . '/views');
+        $remote = ['execute' => [], 'query' => ['statusCode' => '0000', 'transactionStatus' => 'Initiated']];
+        $this->gateway($remote);
+        $GLOBALS['config']['bkash'] = ['app_key' => 'key', 'app_secret' => 'sec', 'username' => 'user', 'password' => 'pwd'];
+        $_GET = ['paymentID' => 'PAY_CTRL_' . bin2hex(random_bytes(3)), 'status' => 'cancel'];
+        try {
+            $html = (new \Bongo\Packages\Bkash\Controllers\BKashController())->callback(new \System\Http\Request());
+            $this->assertTrue(is_string($html) && $html !== '', 'the callback renders a page instead of crashing');
+        } finally {
+            $_GET = [];
+            unset($GLOBALS['config']['bkash']);
+        }
+    }
 }
