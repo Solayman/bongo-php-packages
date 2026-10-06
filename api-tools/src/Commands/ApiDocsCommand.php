@@ -27,9 +27,17 @@ class ApiDocsCommand extends Command
             $totalEndpoints += count($methods);
         }
 
-        $out = $options['out'] ?? $options['o'] ?? (function_exists('base_path') ? base_path('public/docs/openapi.json') : 'public/docs/openapi.json');
+        $defaultRoute = function_exists('config') ? config('api.json_route', '/api/openapi.json') : '/api/openapi.json';
+        $defaultPath = function_exists('base_path') ? base_path('public' . $defaultRoute) : 'public' . $defaultRoute;
+        $out = $options['out'] ?? $options['o'] ?? $defaultPath;
 
         if ($generator->saveToFile((string) $out)) {
+            // Also keep public/docs/openapi.json in sync if different
+            $docsPath = function_exists('base_path') ? base_path('public/docs/openapi.json') : 'public/docs/openapi.json';
+            if ((string) $out !== (string) $docsPath) {
+                @$generator->saveToFile((string) $docsPath);
+            }
+
             $this->info("OpenAPI documentation successfully written to: {$out}");
             $this->line("  Paths:     {$pathCount}");
             $this->line("  Endpoints: {$totalEndpoints}");
