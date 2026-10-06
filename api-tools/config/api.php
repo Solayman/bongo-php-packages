@@ -24,7 +24,7 @@ return [
     'docs_enabled' => env('API_DOCS_ENABLED', true),
     'docs_route'   => env('API_DOCS_ROUTE', '/api/docs'),
     'redoc_route'  => env('API_REDOC_ROUTE', '/api/redoc'),
-    'json_route'   => env('API_JSON_ROUTE', '/api/openapi.json'),
+    'json_route'   => env('API_JSON_ROUTE', '/docs/openapi.json'),
 
     /*
     |--------------------------------------------------------------------------

@@ -14,6 +14,18 @@ class ApiDocsController
      */
     public function json(): JsonResponse
     {
+        $file = function_exists('base_path') ? base_path('public/docs/openapi.json') : 'public/docs/openapi.json';
+        if (is_file($file)) {
+            $content = (string) @file_get_contents($file);
+            $spec = json_decode($content, true);
+            if (is_array($spec)) {
+                return new JsonResponse($spec, 200, [
+                    'Access-Control-Allow-Origin'  => '*',
+                    'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+                ]);
+            }
+        }
+
         $generator = new OpenApiGenerator();
         $spec = $generator->generate();
 
@@ -28,7 +40,7 @@ class ApiDocsController
      */
     public function swagger(): string
     {
-        $jsonRoute = function_exists('config') ? config('api.json_route', '/api/openapi.json') : '/api/openapi.json';
+        $jsonRoute = function_exists('config') ? config('api.json_route', '/docs/openapi.json') : '/docs/openapi.json';
         $title = function_exists('config') ? config('api.title', 'Bongo API Documentation') : 'Bongo API Documentation';
 
         return function_exists('view')
@@ -41,7 +53,7 @@ class ApiDocsController
      */
     public function redoc(): string
     {
-        $jsonRoute = function_exists('config') ? config('api.json_route', '/api/openapi.json') : '/api/openapi.json';
+        $jsonRoute = function_exists('config') ? config('api.json_route', '/docs/openapi.json') : '/docs/openapi.json';
         $title = function_exists('config') ? config('api.title', 'Bongo API Documentation') : 'Bongo API Documentation';
 
         return function_exists('view')
