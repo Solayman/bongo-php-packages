@@ -33,7 +33,11 @@ return [
     |
     */
     'route_prefix' => env('FILEMANAGER_PREFIX', 'filemanager'),
-    'middleware' => ['web'],
+    // Signed-in users only. Add your own gate too, e.g. ['web', 'auth', 'can:manage-files']
+    'middleware' => ['web', 'auth'],
+
+    // HTML and SVG files can run scripts on your site when opened. Leave false unless only trusted admins upload.
+    'allow_html_svg' => (bool) env('FILEMANAGER_ALLOW_HTML_SVG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -57,11 +61,11 @@ return [
     'max_file_size_kb' => (int) env('FILEMANAGER_MAX_SIZE_KB', 50000), // 50 MB
 
     'valid_image_extensions' => [
-        'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'avif'
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'avif' // svg only with allow_html_svg
     ],
 
     'valid_code_extensions' => [
-        'php', 'js', 'ts', 'json', 'css', 'scss', 'html', 'htm',
+        'js', 'ts', 'json', 'css', 'scss', // never php (it would run); html only with allow_html_svg
         'sql', 'md', 'txt', 'xml', 'yml', 'yaml', 'log', 'csv'
     ],
 
