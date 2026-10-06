@@ -4,6 +4,7 @@ namespace Bongo\Packages\Impersonate\Tests;
 
 use Bongo\Packages\Impersonate\Impersonate;
 use System\Auth\Auth;
+use System\Auth\Gate;
 use System\Testing\TestCase;
 
 class ImpersonateTest extends TestCase
@@ -17,9 +18,20 @@ class ImpersonateTest extends TestCase
         $_SESSION = [];
     }
 
+    public function tearDown(): void
+    {
+        $prop = new \ReflectionProperty(Gate::class, 'abilities');
+        $prop->setAccessible(true);
+        $abilities = $prop->getValue();
+        unset($abilities['impersonate']);
+        $prop->setValue(null, $abilities);
+        parent::tearDown();
+    }
+
     public function testTakeAndLeaveLifecycle(): void
     {
-        $admin = (object) ['id' => 1, 'name' => 'Admin User', 'email' => 'admin@example.com'];
+        Gate::define('impersonate', fn($user, $target) => ($user->role ?? '') === 'admin');
+        $admin = (object) ['id' => 1, 'name' => 'Admin User', 'email' => 'admin@example.com', 'role' => 'admin'];
         $customer = (object) ['id' => 99, 'name' => 'John Customer', 'email' => 'john@example.com'];
 
         // Sign in as admin
@@ -48,6 +60,36 @@ class ImpersonateTest extends TestCase
 
         // Banner is empty when not impersonating
         $this->assertSame('', Impersonate::renderBanner());
+    }
+
+    public function testDeniedByDefaultForOrdinaryUsers(): void
+    {
+        // No canImpersonate() and no Gate rule: a normal signed-in user gets nothing
+        $customer = (object) ['id' => 7, 'name' => 'Customer'];
+        $admin = (object) ['id' => 1, 'name' => 'Admin'];
+        Auth::guard('web')->login($customer);
+        $this->assertFalse(Impersonate::take($admin, 'web'));
+        $this->assertFalse(Impersonate::isImpersonating());
+        $this->assertSame(7, Auth::guard('web')->id());
+    }
+
+    public function testAdminsCannotImpersonateOtherAdmins(): void
+    {
+        Gate::define('impersonate', fn($user, $target) => ($user->role ?? '') === 'admin');
+        $admin = (object) ['id' => 1, 'name' => 'Admin', 'role' => 'admin'];
+        $otherAdmin = (object) ['id' => 2, 'name' => 'Other admin', 'role' => 'admin'];
+        Auth::guard('web')->login($admin);
+        $this->assertFalse(Impersonate::take($otherAdmin, 'web'));
+    }
+
+    public function testRoutesNeedASignedInUserAndCsrf(): void
+    {
+        $router = new \System\Routing\Router();
+        $router->loadFile(dirname(__DIR__) . '/routes.php');
+        foreach ($router->routes() as $route) {
+            $this->assertTrue(in_array('auth', $route->middleware, true), "{$route->path} must require sign-in");
+            $this->assertTrue(in_array('web', $route->middleware, true), "{$route->path} needs session + CSRF");
+        }
     }
 
     public function testCannotImpersonateSelfOrWhenNotLoggedIn(): void
