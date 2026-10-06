@@ -13,6 +13,7 @@ class OpenApiGenerator
 {
     protected ?Router $router;
     protected array $config;
+    protected array $customSpec = [];
 
     public function __construct(?Router $router = null, array $config = [])
     {
@@ -24,7 +25,34 @@ class OpenApiGenerator
             'prefix'      => function_exists('config') ? config('api.prefix', 'api') : 'api',
             'base_url'    => function_exists('env') ? env('APP_URL', 'http://localhost:8000') : 'http://localhost:8000',
         ], $config);
+
+        if (function_exists('config') && is_array(config('api.custom_spec'))) {
+            $this->customSpec = config('api.custom_spec');
+        }
     }
+
+    /**
+     * Merge custom OpenAPI specification array or overrides into the generated spec.
+     */
+    public function merge(array $customSpec): self
+    {
+        $this->customSpec = array_replace_recursive($this->customSpec, $customSpec);
+        return $this;
+    }
+
+    /**
+     * Add or update an individual path operation in the custom specification.
+     */
+    public function addPath(string $path, string $method, array $operation): self
+    {
+        $verb = strtolower($method);
+        if (!isset($this->customSpec['paths'][$path])) {
+            $this->customSpec['paths'][$path] = [];
+        }
+        $this->customSpec['paths'][$path][$verb] = $operation;
+        return $this;
+    }
+
 
     /**
      * Generate the OpenAPI 3.0.3 specification array.
@@ -95,7 +123,11 @@ class OpenApiGenerator
                 }
 
                 $spec['paths'][$path][$verb] = $operation;
-            }
+        }
+        }
+
+        if (!empty($this->customSpec)) {
+            $spec = array_replace_recursive($spec, $this->customSpec);
         }
 
         return $spec;
@@ -115,11 +147,14 @@ class OpenApiGenerator
             $controllerClass = $route->action[0];
             $methodName = $route->action[1];
 
-            $tag = basename(str_replace('\\', '/', $controllerClass));
+            $className = is_object($controllerClass) ? get_class($controllerClass) : (string) $controllerClass;
+            $tag = basename(str_replace('\\', '/', $className));
             $tag = preg_replace('/Controller$/', '', $tag) ?: 'Default';
-            $tags[] = $tag;
+            if (!str_contains($tag, '@anonymous') && !str_starts_with($tag, 'class@')) {
+                $tags[] = $tag;
+            }
 
-            if (class_exists($controllerClass) && method_exists($controllerClass, $methodName)) {
+            if (is_object($controllerClass) || class_exists($className)) {
                 try {
                     $refMethod = new ReflectionMethod($controllerClass, $methodName);
                     $docComment = $refMethod->getDocComment();
@@ -130,6 +165,9 @@ class OpenApiGenerator
                         }
                         if (!empty($parsedDoc['description'])) {
                             $description = $parsedDoc['description'];
+                        }
+                        if (!empty($parsedDoc['tags'])) {
+                            $tags = array_merge($tags, $parsedDoc['tags']);
                         }
                     }
                 } catch (\Throwable $e) {
@@ -259,18 +297,58 @@ class OpenApiGenerator
     {
         $lines = explode("\n", $docblock);
         $cleanLines = [];
+        $summary = '';
+        $descriptionLines = [];
+        $tags = [];
 
         foreach ($lines as $line) {
             $line = trim($line, "/* \t\r");
-            if ($line !== '' && !str_starts_with($line, '@')) {
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^@summary\s+(.+)$/i', $line, $matches)) {
+                $summary = trim($matches[1]);
+            } elseif (preg_match('/^@description\s+(.+)$/i', $line, $matches)) {
+                $descriptionLines[] = trim($matches[1]);
+            } elseif (preg_match('/^@tags?\s+(.+)$/i', $line, $matches)) {
+                $parsedTags = array_map('trim', explode(',', $matches[1]));
+                $tags = array_merge($tags, array_filter($parsedTags));
+            } elseif (!str_starts_with($line, '@')) {
                 $cleanLines[] = $line;
             }
         }
 
+        if ($summary === '' && !empty($cleanLines[0])) {
+            $summary = $cleanLines[0];
+            $cleanLines = array_slice($cleanLines, 1);
+        }
+
+        if (empty($descriptionLines) && !empty($cleanLines)) {
+            $descriptionLines = $cleanLines;
+        }
+
         return [
-            'summary'     => $cleanLines[0] ?? '',
-            'description' => implode(' ', array_slice($cleanLines, 1)),
+            'summary'     => $summary,
+            'description' => implode(' ', $descriptionLines),
+            'tags'        => array_values(array_unique($tags)),
         ];
+    }
+
+    /**
+     * Load an existing OpenAPI specification from a JSON file.
+     */
+    public static function fromFile(string $path): ?array
+    {
+        if (!is_file($path)) {
+            return null;
+        }
+        $content = @file_get_contents($path);
+        if ($content === false) {
+            return null;
+        }
+        $decoded = json_decode($content, true);
+        return is_array($decoded) ? $decoded : null;
     }
 
     public function toJson(int $flags = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE): string
