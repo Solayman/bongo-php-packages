@@ -4,7 +4,6 @@ namespace Bongo\Packages\QueueMonitor\Controllers;
 
 use Bongo\Packages\QueueMonitor\QueueMonitor;
 use System\Http\Request;
-use System\Http\Response;
 
 class QueueMonitorController
 {
@@ -13,53 +12,51 @@ class QueueMonitorController
         $stats = QueueMonitor::stats();
         $failedJobs = QueueMonitor::failedJobs(50);
 
-        if ($request->wantsJson() || $request->isAjax()) {
-            return Response::json(['stats' => $stats, 'failed_jobs' => $failedJobs]);
+        if (Request::wantsJson() || Request::ajax()) {
+            return ['stats' => $stats, 'failed_jobs' => $failedJobs];
         }
 
-        // Render standalone dashboard HTML
-        return Response::html($this->renderView($stats, $failedJobs));
+        // Standalone dashboard HTML
+        return $this->renderView($stats, $failedJobs);
     }
 
-    public function apiStats()
+    public function apiStats(): array
     {
-        return Response::json(QueueMonitor::stats());
+        return QueueMonitor::stats();
     }
 
     public function retry(Request $request, $id)
     {
         $success = QueueMonitor::retry($id);
-        if ($request->wantsJson()) {
-            return Response::json(['success' => $success]);
-        }
-        return Response::redirect('/queue-monitor')->with($success ? 'success' : 'error', $success ? "Job {$id} retried successfully." : "Failed to retry job {$id}.");
+        return $this->done(['success' => $success], $success ? 'success' : 'error', $success ? "Job {$id} retried successfully." : "Failed to retry job {$id}.");
     }
 
     public function retryAll(Request $request)
     {
         $count = QueueMonitor::retryAll();
-        if ($request->wantsJson()) {
-            return Response::json(['success' => true, 'retried' => $count]);
-        }
-        return Response::redirect('/queue-monitor')->with('success', "Retried {$count} failed jobs.");
+        return $this->done(['success' => true, 'retried' => $count], 'success', "Retried {$count} failed jobs.");
     }
 
     public function delete(Request $request, $id)
     {
         $success = QueueMonitor::delete($id);
-        if ($request->wantsJson()) {
-            return Response::json(['success' => $success]);
-        }
-        return Response::redirect('/queue-monitor')->with('success', "Job {$id} deleted.");
+        return $this->done(['success' => $success], 'success', "Job {$id} deleted.");
     }
 
     public function flush(Request $request)
     {
         $count = QueueMonitor::flush();
-        if ($request->wantsJson()) {
-            return Response::json(['success' => true, 'flushed' => $count]);
+        return $this->done(['success' => true, 'flushed' => $count], 'success', "Flushed {$count} failed jobs.");
+    }
+
+    /** JSON for API clients, otherwise a flash message and back to the dashboard */
+    protected function done(array $json, string $type, string $message)
+    {
+        if (Request::wantsJson()) {
+            return $json;
         }
-        return Response::redirect('/queue-monitor')->with('success', "Flushed {$count} failed jobs.");
+        flash($type, $message);
+        redirect('/queue-monitor');
     }
 
     protected function renderView(array $stats, array $failedJobs): string
