@@ -269,10 +269,20 @@ class BackupManager
 
     protected function storeToDisk(string $sourceFile, string $filename, string $disk): string
     {
+        // A backup holds the whole database: anything under public/ can be downloaded by anyone
+        if ($disk === 'public') {
+            throw new BackupException('Backups must not be stored on the public disk: anyone could download your database.');
+        }
+
         if ($disk === 'local') {
             $destDir = $this->getLocalBackupDirectory();
+            $publicRoot = str_replace('\\', '/', (function_exists('base_path') ? base_path('public') : getcwd() . '/public'));
+            $normalized = str_replace('\\', '/', $destDir);
+            if (str_starts_with(rtrim($normalized, '/') . '/', rtrim($publicRoot, '/') . '/')) {
+                throw new BackupException('The backup folder is inside public/: anyone could download your database. Use storage/backups.');
+            }
             if (!is_dir($destDir)) {
-                mkdir($destDir, 0755, true);
+                mkdir($destDir, 0750, true);
             }
             $target = $destDir . DIRECTORY_SEPARATOR . $filename;
             if (!@copy($sourceFile, $target)) {

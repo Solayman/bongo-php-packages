@@ -92,6 +92,10 @@ class BackupTest extends TestCase
 
     public function testMySqlDumperWithActiveConnection(): void
     {
+        if (DB::getDriver() !== 'mysql') {
+            $this->assertTrue(true);   // MySQL dumper: only on a MySQL test database
+            return;
+        }
         $pdo = DB::connection()->getPdo();
 
         // Create a temporary table with rows to test dump output
@@ -270,5 +274,16 @@ class BackupTest extends TestCase
             }
         }
         @rmdir($dir);
+    }
+
+    public function testBackupsAreNeverStoredWherePeopleCanDownloadThem(): void
+    {
+        $store = new \ReflectionMethod(\Bongo\Packages\Backup\BackupManager::class, 'storeToDisk');
+        $store->setAccessible(true);
+        $source = $this->tempDir . DIRECTORY_SEPARATOR . 'probe.zip';
+        file_put_contents($source, 'zip');
+
+        $this->assertThrows(\Bongo\Packages\Backup\Exceptions\BackupException::class, fn() => $store->invoke(new \Bongo\Packages\Backup\BackupManager(['disk' => 'public']), $source, 'b.zip', 'public'));
+        $this->assertThrows(\Bongo\Packages\Backup\Exceptions\BackupException::class, fn() => $store->invoke(new \Bongo\Packages\Backup\BackupManager(['destination_path' => 'public/backups']), $source, 'b.zip', 'local'));
     }
 }
