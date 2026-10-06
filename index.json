@@ -625,6 +625,32 @@
           }
         }
       }
+    },
+    "taggable": {
+      "name": "taggable",
+      "latest": "1.0.0",
+      "description": "Zero-dependency polymorphic tagging engine for models with Unicode slugification, tag clouds, and usage counters",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "newsletter": {
+      "name": "newsletter",
+      "latest": "1.0.0",
+      "description": "Zero-dependency email newsletter subscriber management with double opt-in verification, unsubscribe tokens, and CSV export",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

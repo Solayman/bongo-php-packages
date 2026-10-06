@@ -1,0 +1,16 @@
+{
+    "name": "newsletter",
+    "description": "Zero-dependency email newsletter subscriber management with double opt-in verification, unsubscribe tokens, and CSV export",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Newsletter\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/newsletter.php",
+    "migrations": "database/migrations"
+}
