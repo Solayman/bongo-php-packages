@@ -103,7 +103,18 @@ When 2FA is active on the user's account, accessing protected routes redirects u
 - `POST /2fa/confirm`: Activates 2FA and presents the 8 backup codes.
 - `GET /2fa/challenge`: Prompts for 6-digit TOTP code or backup code.
 - `POST /2fa/verify`: Verifies code and unlocks session.
-- `POST /2fa/disable`: Deactivates 2FA.
+- `POST /2fa/disable`: Deactivates 2FA. Needs a session that passed the challenge **and** a current `code` (or `recovery_code`).
+
+All routes use `web` + `auth` (session, CSRF, signed-in user).
+
+### Security
+
+- Each code works once: a code that was already accepted (same 30-second step) is refused.
+- 5 wrong codes per user lock verification for 5 minutes (the right code is refused too during the lock).
+- Recovery codes are single-use, even with parallel requests (row lock).
+- With 2FA on, `/2fa/setup` and `/2fa/confirm` need a verified session, so a stolen password cannot replace the authenticator.
+- The verified flag belongs to one user: another account signing in on the same browser must pass its own challenge.
+- Secrets are stored encrypted with `APP_KEY` (rows from older versions keep working). Changing `APP_KEY` makes stored secrets unreadable: those users must set up 2FA again.
 
 Publish views to customize styling:
 ```bash

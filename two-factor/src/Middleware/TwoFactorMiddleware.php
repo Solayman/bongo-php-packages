@@ -4,50 +4,44 @@ declare(strict_types=1);
 
 namespace Bongo\Packages\TwoFactor\Middleware;
 
-use Closure;
 use System\Auth\Auth;
 use System\Database\DB;
 use System\Http\Request;
-use System\Http\Response;
 
+/**
+ * Users with 2FA turned on must pass /2fa/challenge before reaching routes with this middleware.
+ *
+ *   'middleware' => ['2fa' => \Bongo\Packages\TwoFactor\Middleware\TwoFactorMiddleware::class]   (config/app.php)
+ *   Route::middleware(['web', 'auth', '2fa'])->group(...);
+ */
 class TwoFactorMiddleware
 {
-    /**
-     * Handle incoming request and verify 2FA status if enabled for the user.
-     */
-    public function handle(Request $request, Closure $next): mixed
+    public function handle(): void
     {
         $user = Auth::user();
-        if (!$user) {
-            return $next($request);
+        $userId = $user ? (int) ($user->id ?? 0) : 0;
+        if ($userId === 0) {
+            return;   // guests are handled by the 'auth' middleware
         }
 
-        // Check if user has active 2FA record
-        $userId = $user->id ?? $user->getId() ?? null;
-        if (!$userId || !class_exists(DB::class)) {
-            return $next($request);
+        // Passed the challenge in this session, as this same user
+        if (($_SESSION['2fa_verified'] ?? false) === true && ($_SESSION['2fa_verified_user'] ?? null) === $userId) {
+            return;
+        }
+
+        $path = '/' . ltrim(Request::path(), '/');
+        if (str_starts_with($path, '/2fa/') || $path === '/logout') {
+            return;   // the challenge itself, and a way out
         }
 
         try {
-            $record = DB::table('two_factor_auth')
-                ->where('user_id', $userId)
-                ->whereNotNull('confirmed_at')
-                ->first();
-
-            if ($record) {
-                $sessionVerified = function_exists('session') && session('2fa_verified') === true;
-                $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-
-                // Allow 2FA challenge and verify routes
-                if (!$sessionVerified && !str_starts_with($currentPath, '/2fa/challenge') && !str_starts_with($currentPath, '/2fa/verify')) {
-                    $challengeUrl = function_exists('config') ? config('two_factor.challenge_route', '/2fa/challenge') : '/2fa/challenge';
-                    return redirect($challengeUrl);
-                }
-            }
+            $enabled = DB::table('two_factor_auth')->where('user_id', $userId)->whereNotNull('confirmed_at')->exists();
         } catch (\Throwable $e) {
-            // Silently allow if table does not exist or database error
+            $enabled = false;   // no two_factor_auth table yet: nobody has 2FA on
         }
 
-        return $next($request);
+        if ($enabled) {
+            redirect((string) (function_exists('config') ? config('two_factor.challenge_route', '/2fa/challenge') : '/2fa/challenge'));
+        }
     }
 }

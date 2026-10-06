@@ -52,21 +52,29 @@ class TwoFactor
      */
     public static function verify(string $secret, string $code, int $window = 1, ?int $timestamp = null, int $digits = 6, int $period = 30): bool
     {
+        return self::matchingStep($secret, $code, $window, $timestamp, $digits, $period) !== null;
+    }
+
+    /**
+     * The time step (floor(time / period)) of the code that matched, or null.
+     * Callers store the last accepted step and refuse codes at or before it, so a code works once.
+     */
+    public static function matchingStep(string $secret, string $code, int $window = 1, ?int $timestamp = null, int $digits = 6, int $period = 30): ?int
+    {
         $cleanCode = trim($code);
         if (strlen($cleanCode) !== $digits || !ctype_digit($cleanCode)) {
-            return false;
+            return null;
         }
 
         $timestamp = $timestamp ?? time();
         for ($i = -$window; $i <= $window; $i++) {
             $testTime = $timestamp + ($i * $period);
-            $expected = self::generateTotp($secret, $testTime, $digits, $period);
-            if (hash_equals($expected, $cleanCode)) {
-                return true;
+            if (hash_equals(self::generateTotp($secret, $testTime, $digits, $period), $cleanCode)) {
+                return intdiv($testTime, $period);
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
