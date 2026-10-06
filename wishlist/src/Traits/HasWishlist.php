@@ -7,7 +7,7 @@ namespace Bongo\Packages\Wishlist\Traits;
 use Bongo\Packages\Wishlist\Models\Wishlist as WishlistModel;
 use Bongo\Packages\Wishlist\Models\WishlistItem;
 use Bongo\Packages\Wishlist\Wishlist;
-use System\Database\Relations\HasMany;
+use System\Database\HasMany;
 
 trait HasWishlist
 {

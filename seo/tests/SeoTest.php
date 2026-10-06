@@ -154,4 +154,11 @@ class SeoTest extends TestCase
         $this->assertTrue(is_file($tmpOut));
         @unlink($tmpOut);
     }
+
+    public function testTemplateDirectivesAreRegistered(): void
+    {
+        require_once dirname(__DIR__) . '/bootstrap.php';
+        $php = (new \System\View\ViewCompiler())->compile("@seo");
+        $this->assertContains('Seo::render()', $php);
+    }
 }

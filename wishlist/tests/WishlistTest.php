@@ -241,4 +241,10 @@ class WishlistTest extends TestCase
         $this->assertSame(1, $wish->count());
         $this->assertFalse($wish->has('item_1'));
     }
+
+    public function testRelationsUseTheCoreRelationClasses(): void
+    {
+        $this->assertTrue((new \Bongo\Packages\Wishlist\Models\Wishlist())->items() instanceof \System\Database\HasMany, 'items() returns a core HasMany');
+        $this->assertTrue((new \Bongo\Packages\Wishlist\Models\WishlistItem())->wishlist() instanceof \System\Database\BelongsTo, 'wishlist() returns a core BelongsTo');
+    }
 }

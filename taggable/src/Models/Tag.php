@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bongo\Packages\Taggable\Models;
 
 use System\Database\Model;
-use System\Database\Relations\HasMany;
+use System\Database\HasMany;
 
 class Tag extends Model
 {
