@@ -225,6 +225,13 @@ class ActivityLogTest extends TestCase
         $this->assertSame('User One', $activities[0]->causer()->name);
         $this->assertSame('Article Two', $activities[1]->subject()->title);
         $this->assertSame('User Two', $activities[1]->causer()->name);
+
+        // Also verify eagerLoadMorph alias works identically
+        $activities2 = Activity::whereIn('id', [$act1->id, $act2->id])->get();
+        Activity::eagerLoadMorph($activities2);
+        $this->assertTrue($activities2[0]->relationLoaded('subject'));
+        $this->assertTrue($activities2[0]->relationLoaded('causer'));
+        $this->assertSame('Article One', $activities2[0]->subject()->title);
     }
 }
 
