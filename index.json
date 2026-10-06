@@ -430,6 +430,45 @@
           }
         }
       }
+    },
+    "courier": {
+      "name": "courier",
+      "latest": "1.0.0",
+      "description": "Bangladesh courier and logistics engine for Steadfast and Pathao Courier with tracking, order creation, balance lookup and webhooks",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "invoice": {
+      "name": "invoice",
+      "latest": "1.0.0",
+      "description": "Zero-dependency professional invoice and POS thermal receipt generator with A4 print CSS, VAT/tax, discounts, shipping, and XSS sanitization",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "whatsapp": {
+      "name": "whatsapp",
+      "latest": "1.0.0",
+      "description": "Zero-dependency Meta WhatsApp Business Cloud API client for transactional messages, OTP templates, media & webhooks",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

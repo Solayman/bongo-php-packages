@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-254%20passed%20(1082%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-274%20passed%20(1155%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **254 automated unit and integration tests (1,082 assertions)** across 33 official packages.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **274 automated unit and integration tests (1,155 assertions)** across 36 official packages.
 
 ---
 
@@ -48,6 +48,9 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`sweet-alert`](#31-sweet-alert-v100) | UI Components | 1.0.0 | Zero-dependency modal alert and confirmation dialog engine with promise callbacks and danger prompts | `php bongo add sweet-alert` |
 | [`zoom`](#32-zoom-v100) | Communications | 1.0.0 | Zero-dependency Zoom Video Communications API client for meetings, registrants, OAuth and webhooks | `php bongo add zoom` |
 | [`google-meet`](#33-google-meet-v100) | Communications | 1.0.0 | Zero-dependency Google Meet and Calendar API client with Service Account RS256 JWT auth | `php bongo add google-meet` |
+| [`courier`](#34-courier-v100) | Logistics | 1.0.0 | Bangladesh courier and logistics engine for Steadfast and Pathao Courier with tracking, order creation, balance lookup and webhooks | `php bongo add courier` |
+| [`invoice`](#35-invoice-v100) | E-Commerce & Billing | 1.0.0 | Professional invoice and POS thermal receipt generator with A4 print CSS, VAT/tax, discounts, shipping, and XSS sanitization | `php bongo add invoice` |
+| [`whatsapp`](#36-whatsapp-v100) | Communications | 1.0.0 | Meta WhatsApp Business Cloud API client for transactional messages, OTP templates, media & webhooks | `php bongo add whatsapp` |
 
 ---
 
@@ -442,6 +445,46 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 
 ---
 
+### 34. `courier` (v1.0.0)
+**Bangladesh Courier & Logistics Engine (Steadfast & Pathao Courier)**
+- **Problem Solved:** Bangladeshi e-commerce stores rely on local third-party logistics (3PL) providers like Steadfast Courier and Pathao Courier for Cash on Delivery (COD) and doorstep shipments, requiring bespoke API integrations without composer dependencies.
+- **Architecture & Highlights:**
+  - Multi-driver courier architecture supporting Steadfast Courier and Pathao Courier.
+  - Automated order creation (`createOrder`), live delivery tracking (`checkStatus`), and merchant balance lookup (`getBalance`).
+  - Webhook delivery status normalizer converting heterogeneous carrier callbacks into standard states (`delivered`, `in_transit`, `cancelled`, `returned`).
+  - CLI parcel tracker: `php bongo courier:track <consignment_id_or_tracking_code>`.
+- **Install:** `php bongo add courier`
+
+---
+
+### 35. `invoice` (v1.0.0)
+**Professional Invoice & POS Thermal Receipt Generator**
+- **Problem Solved:** Generating clean, print-ready customer invoices and POS counter receipts previously required bulky 50MB PDF libraries or external services.
+- **Architecture & Highlights:**
+  - Fluent builder for order line items, discounts, VAT/tax rates, shipping fees, and currency formatting.
+  - Responsive HTML5 A4 layout with print-optimized CSS (`@media print`, page margins, clean headers, total due callouts).
+  - High-speed 80mm and 58mm thermal receipt layout (`renderPos()`) with monospace styling and `window.print()` trigger for counter POS hardware.
+  - Complete XSS sanitization of all customer and company inputs via UTF-8 HTML escaping.
+  - Global `invoice()` helper.
+- **Install:** `php bongo add invoice`
+
+---
+
+### 36. `whatsapp` (v1.0.0)
+**Meta WhatsApp Business Cloud API Client**
+- **Problem Solved:** Modern transactional platforms require immediate customer order notifications, OTP login codes, and PDF invoices delivered directly via WhatsApp.
+- **Architecture & Highlights:**
+  - Zero-dependency client for Meta Graph API (WhatsApp Cloud API v20.0).
+  - High-throughput direct text messaging (`sendText()`) and pre-approved template messaging (`sendTemplate()`).
+  - Dedicated OTP template helper (`sendOtp()`) for 6-digit one-time password verification buttons.
+  - Media delivery (`sendMedia()`) supporting document invoices, product images, audio notes, and videos.
+  - Built-in Meta webhook subscription challenge verification (`verifyWebhook()`) and SHA-256 HMAC signature validation (`verifySignature()`).
+  - Native fake testing mode (`WhatsApp::fake()`) for instant, offline unit test runs.
+  - CLI message dispatcher: `php bongo whatsapp:send <phone> [message]`.
+- **Install:** `php bongo add whatsapp`
+
+---
+
 ## 🛠️ Package Management CLI Reference
 
 All packages integrate directly with the Bongo CLI:
@@ -479,11 +522,11 @@ php bongo package:test <package-name>
 The package suite includes an automated test runner (`run_tests.php`) using Bongo's built-in testing engine via the `BongoMvc` junction:
 
 ```bash
-# Run tests across all 33 packages
+# Run tests across all 36 packages
 php run_tests.php
 
 # Expected result:
-# Tests: 254 passed (1082 assertions) across 33 packages
+# Tests: 274 passed (1155 assertions) across 36 packages
 ```
 
 ---

@@ -1,0 +1,15 @@
+{
+    "name": "invoice",
+    "description": "Zero-dependency print-ready and PDF invoice, voucher, and thermal POS receipt generator",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Invoice\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/invoice.php"
+}
