@@ -1,0 +1,21 @@
+{
+  "name": "discord",
+  "version": "1.0.0",
+  "description": "Zero-dependency Discord webhook alerts, notifications, and rich embed builder",
+  "keywords": ["discord", "webhook", "notifications", "alerts", "embeds", "bongo"],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Bongo\\Packages\\Discord\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "config": {
+    "config/discord.php": "config/discord.php"
+  },
+  "commands": [
+    "Bongo\\Packages\\Discord\\Commands\\DiscordSendCommand"
+  ]
+}

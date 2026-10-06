@@ -2,7 +2,7 @@
 
 ## 1. Multi-Repository Workspace Structure (`D:\laravel\framework\`)
 - **`bongo-php`**: Core framework repository (`solayman` branch for active development, `master` for production).
-- **`bongo-php-packages`**: Official package suite repository containing all 24 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`) with 213 passing package tests (886 assertions).
+- **`bongo-php-packages`**: Official package suite repository containing all 29 packages (`sslcommerz`, `bkash`, `sms`, `s3`, `social-login`, `nagad`, `stripe`, `two-factor`, `image`, `backup`, `permission`, `zip`, `ftp`, `paypal`, `api-tools`, `settings`, `seo`, `activity-log`, `health`, `file-manager`, `captcha`, `aamarpay`, `telegram`, `bangla-tools`, `bd-locations`, `webhooks`, `impersonate`, `queue-monitor`, `discord`) with 232 passing package tests (980 assertions).
 - **`bongo-package-and-feature-test`**: Official testbed and application sandbox with 42 passing feature tests (449 assertions). **RULE: Always implement and test new features in this repository.** (`bongo-test` junction links here).
 - **`BongoMvc`**: Directory junction linking to `bongo-php` for seamless package test runner (`run_tests.php`) execution.
 - **`bongo-test`**: Directory junction linking to `bongo-package-and-feature-test`.
@@ -36,7 +36,7 @@
 
 ---
 
-## 5. Official Packages Suite Overview (24 Packages)
+## 5. Official Packages Suite Overview (29 Packages)
 1. **`sslcommerz`** (1.0.0): SSLCommerz payment gateway for Bangladesh with token validation, sandbox/live modes, IPN handling, checkout views, translations, and `php bongo sslcommerz:check`.
 2. **`bkash`** (1.0.0): bKash Tokenized Checkout payment gateway with token caching, payment execution, query, refund, checkout views, translations, and `php bongo bkash:check`.
 3. **`sms`** (1.0.0): Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS, and log driver) with 6-digit cryptographic phone OTP generation, attempt throttling, verification, views, and natural Bengali localization.
@@ -61,12 +61,17 @@
 22. **`aamarpay`** (1.0.0): AamarPay payment gateway for Bangladesh with sandbox/live modes, MFS support (bKash, Nagad, Rocket, Upay), card processing, `TrxCheck` server validation, pre-built views, and `php bongo aamarpay:check` CLI command.
 23. **`telegram`** (1.0.0): Real-time Telegram Bot notifications, rich system alerts with emojis and JSON details, channel broadcasts, `Telegram::fake()` unit testing, and `php bongo telegram:send` / `telegram:test` CLI utilities.
 24. **`bangla-tools`** (1.0.0): Authentic Bengali linguistic toolkit (English <-> Bengali digit conversion, number-to-words engine with কোটি/লাখ/হাজার/শত, South Asian Taka currency notation, Bongabdo calendar converter according to Bangla Academy standards, Unicode cleaner, and SEO slug generator).
+25. **`bd-locations`** (1.0.0): Complete Bangladesh administrative divisions, 64 districts, upazilas, postcodes, and shipping zones in English and Bengali with HTML cascading select generators and CLI command `bd-locations:list`.
+26. **`webhooks`** (1.0.0): Outbound webhook dispatcher with HMAC-SHA256 signature headers, retry support, `Webhook::fake()` unit testing, and CLI command `webhook:send`.
+27. **`impersonate`** (1.0.0): Admin user impersonation with secure session swapping, session guarding, floating leave bar, and activity log tracking.
+28. **`queue-monitor`** (1.0.0): Dark-themed web dashboard for Bongo background queue jobs, pending counts, driver telemetry, and failed job retries/flushing.
+29. **`discord`** (1.0.0): Discord webhook alerts, notifications, and rich embed builder with color-coded severity levels, global helpers, and CLI commands `discord:send` / `discord:test`.
 
 ---
 
 ## 6. Package Development Standards
 - **Zero Required External Dependencies**: Pure PHP 8.0+, no Composer packages, no Node.js runtime.
 - **PSR-12 Standard**: 0 errors checked via `php phpcs.phar`.
-- **Test Suite**: Run `php run_tests.php` to verify all 213 package tests (886 assertions) across all 24 packages with 0 errors.
+- **Test Suite**: Run `php run_tests.php` to verify all 232 package tests (980 assertions) across all 29 packages with 0 errors.
 - **Namespaced Assets**: Views must use `name::view` and translations must use `name::key`.
 - **App Override Priority**: Never hardcode paths that prevent `resources/views/vendor/<name>/` overrides.

@@ -1,13 +1,13 @@
 # Bongo PHP Official Packages Suite
 
-[![Tests](https://img.shields.io/badge/tests-208%20passed%20(853%20assertions)-brightgreen.svg)](#running-package-tests)
+[![Tests](https://img.shields.io/badge/tests-232%20passed%20(980%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0%20required-orange.svg)](#core-principles)
 
 Official, production-ready package suite for the [Bongo PHP Framework](https://github.com/Solayman/bongo-php).
 
-Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **208 automated unit and integration tests (853 assertions)** across 24 official packages.
+Every package is modular, self-contained, and follows Bongo's core principle of **zero required third-party dependencies** (no mandatory Composer packages, no Node.js runtime, no asset build step). Built with pure PHP 8.0+, fully PSR-12 compliant, and tested with **232 automated unit and integration tests (980 assertions)** across 29 official packages.
 
 ---
 
@@ -25,15 +25,20 @@ Every package is modular, self-contained, and follows Bongo's core principle of 
 | [`captcha`](#21-captcha-v100) | Security | 1.0.0 | Universal anti-bot verification suite (Cloudflare Turnstile, Google reCAPTCHA v2/v3, hCaptcha, pure-PHP math & GD image challenges) | `php bongo add captcha` |
 | [`social-login`](#7-social-login-v100) | Security | 1.0.0 | OAuth 2.0 social authentication for Google, GitHub, and Facebook with CSRF protection and private email resolution | `php bongo add social-login` |
 | [`permission`](#8-permission-v100) | Security | 1.0.0 | Role-Based Access Control (RBAC) and permissions management with `HasRoles` trait, super-admin bypass, and CLI tools | `php bongo add permission` |
+| [`impersonate`](#27-impersonate-v100) | Security | 1.0.0 | Zero-dependency user impersonation for admins with secure session swapping and floating leave bar | `php bongo add impersonate` |
 | [`sms`](#9-sms-v100) | Communications | 1.0.0 | Multi-driver SMS gateway (BulkSMSBD, SSL Wireless, Alpha SMS) with 6-digit phone OTP generation and throttling | `php bongo add sms` |
 | [`telegram`](#23-telegram-v100) | Communications | 1.0.0 | Real-time Telegram Bot notifications, rich system alerts, channel broadcasts, and media messaging with pure-PHP Bot API | `php bongo add telegram` |
+| [`discord`](#29-discord-v100) | Communications | 1.0.0 | Zero-dependency Discord webhook alerts, notifications, and rich embed builder | `php bongo add discord` |
 | [`bangla-tools`](#24-bangla-tools-v100) | Localization | 1.0.0 | Bengali linguistic toolkit (Bangla numerals, number-to-words, South Asian Taka currency, Bongabdo calendar, and Unicode normalizer) | `php bongo add bangla-tools` |
+| [`bd-locations`](#25-bd-locations-v100) | Localization | 1.0.0 | Complete Bangladesh administrative divisions, 64 districts, upazilas, postcodes, and shipping zones in English and Bengali | `php bongo add bd-locations` |
 | [`s3`](#10-s3-v100) | Storage | 1.0.0 | AWS SigV4 object storage disk for Amazon S3, DigitalOcean Spaces, Cloudflare R2, and MinIO with presigned temporary URLs | `php bongo add s3` |
 | [`ftp`](#11-ftp-v100) | Storage | 1.0.0 | Zero-dependency FTP and FTPS filesystem driver extending Bongo's `Storage` facade with pure-PHP socket transport | `php bongo add ftp` |
 | [`file-manager`](#12-file-manager-v100) | Storage & UI | 1.0.0 | Zero-dependency web file manager, media lightbox, WYSIWYG picker, and embedded CodeMirror 5 code editor | `php bongo add file-manager` |
 | [`image`](#13-image-v100) | Media | 1.0.0 | Pure-PHP image manipulation, smart cropping, WebP compression, watermarking with alpha blending, and filters | `php bongo add image` |
 | [`zip`](#14-zip-v100) | Archiving | 1.0.0 | Pure-PHP ZIP compression, extraction, streaming downloads, and Zip-Slip path traversal protection | `php bongo add zip` |
 | [`backup`](#15-backup-v100) | Operations | 1.0.0 | Zero-dependency multi-database (SQLite, MySQL, PostgreSQL) and application asset backup engine with multi-disk routing | `php bongo add backup` |
+| [`queue-monitor`](#28-queue-monitor-v100) | Operations | 1.0.0 | Zero-dependency web monitor dashboard for Bongo background queue jobs, pending counts, and failed job retries | `php bongo add queue-monitor` |
+| [`webhooks`](#26-webhooks-v100) | Developer Tools | 1.0.0 | Zero-dependency outbound webhook dispatcher with HMAC-SHA256 signing, delivery logging, and inbound verification | `php bongo add webhooks` |
 | [`api-tools`](#16-api-tools-v100) | Developer Tools | 1.0.0 | API development suite with `JsonResource` transformers, OpenAPI 3.0 docs generator, and sliding window rate limiter | `php bongo add api-tools` |
 | [`settings`](#17-settings-v100) | Application | 1.0.0 | Dynamic application & store settings in database with type casting, caching, `setting()` helper, and CLI suite | `php bongo add settings` |
 | [`seo`](#18-seo-v100) | Marketing | 1.0.0 | SEO metadata suite with OpenGraph, Twitter Cards, Schema.org JSON-LD structured data, and dynamic XML sitemaps | `php bongo add seo` |

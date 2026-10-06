@@ -1,0 +1,18 @@
+{
+  "name": "webhooks",
+  "version": "1.0.0",
+  "description": "Zero-dependency outbound webhook dispatcher with HMAC-SHA256 signing, delivery logging, and inbound verification",
+  "keywords": ["webhooks", "hmac", "signing", "events", "dispatch", "bongo"],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Bongo\\Packages\\Webhooks\\": "src/"
+    }
+  },
+  "config": {
+    "config/webhooks.php": "config/webhooks.php"
+  },
+  "commands": [
+    "Bongo\\Packages\\Webhooks\\Commands\\WebhookSendCommand"
+  ]
+}

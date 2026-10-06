@@ -1,0 +1,21 @@
+{
+  "name": "bd-locations",
+  "version": "1.0.0",
+  "description": "Complete Bangladesh administrative divisions, 64 districts, upazilas, postcodes, and shipping zones in English and Bengali",
+  "keywords": ["bangladesh", "districts", "divisions", "upazilas", "locations", "shipping", "bongo"],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Bongo\\Packages\\BdLocations\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "config": {
+    "config/bd-locations.php": "config/bd-locations.php"
+  },
+  "commands": [
+    "Bongo\\Packages\\BdLocations\\Commands\\BdLocationsCommand"
+  ]
+}

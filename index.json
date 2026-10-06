@@ -313,6 +313,71 @@
           }
         }
       }
+    },
+    "bd-locations": {
+      "name": "bd-locations",
+      "latest": "1.0.0",
+      "description": "Complete Bangladesh administrative divisions, 64 districts, upazilas, postcodes, and shipping zones in English and Bengali",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "webhooks": {
+      "name": "webhooks",
+      "latest": "1.0.0",
+      "description": "Zero-dependency outbound webhook dispatcher with HMAC-SHA256 signing, delivery logging, and inbound verification",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "impersonate": {
+      "name": "impersonate",
+      "latest": "1.0.0",
+      "description": "Zero-dependency user impersonation for admins with secure session swapping and floating leave bar",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "queue-monitor": {
+      "name": "queue-monitor",
+      "latest": "1.0.0",
+      "description": "Zero-dependency web monitor dashboard for Bongo background queue jobs, pending counts, and failed job retries",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "discord": {
+      "name": "discord",
+      "latest": "1.0.0",
+      "description": "Zero-dependency Discord webhook alerts, notifications, and rich embed builder",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }

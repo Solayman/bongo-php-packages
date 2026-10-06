@@ -1,0 +1,16 @@
+{
+  "name": "impersonate",
+  "version": "1.0.0",
+  "description": "Zero-dependency user impersonation for admins with secure session swapping and floating leave bar",
+  "keywords": ["impersonate", "auth", "admin", "switch-user", "session", "bongo"],
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Bongo\\Packages\\Impersonate\\": "src/"
+    }
+  },
+  "config": {
+    "config/impersonate.php": "config/impersonate.php"
+  },
+  "routes": "routes.php"
+}
