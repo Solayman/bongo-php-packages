@@ -1,0 +1,15 @@
+{
+    "name": "sluggable",
+    "description": "Zero-dependency SEO-friendly unique slug generator with Bengali and multilingual transliteration",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Sluggable\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/sluggable.php"
+}

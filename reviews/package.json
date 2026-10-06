@@ -1,0 +1,16 @@
+{
+    "name": "reviews",
+    "description": "Ratings and reviews system for products and models with verified buyer badges, moderation workflows, and helpful voting",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Reviews\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/reviews.php",
+    "migrations": "database/migrations"
+}
