@@ -67,6 +67,7 @@ class QueueMonitorController
         $driver = htmlspecialchars($stats['driver'], ENT_QUOTES, 'UTF-8');
         $pending = (int) $stats['pending'];
         $failed = (int) $stats['failed'];
+        $csrf = function_exists('csrf_field') ? csrf_field() : '';
 
         $rows = '';
         if (empty($failedJobs)) {
@@ -87,9 +88,11 @@ class QueueMonitorController
     <td style="padding:12px;font-size:12px;color:#94a3b8;">{$failedAt}</td>
     <td style="padding:12px;text-align:right;">
         <form method="POST" action="/queue-monitor/retry/{$id}" style="display:inline;margin:0 4px;">
+            {$csrf}
             <button type="submit" style="background:#0284c7;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Retry</button>
         </form>
         <form method="POST" action="/queue-monitor/delete/{$id}" style="display:inline;margin:0;">
+            {$csrf}
             <button type="submit" style="background:#ef4444;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Delete</button>
         </form>
     </td>
@@ -120,9 +123,11 @@ HTML;
             </div>
             <div>
                 <form method="POST" action="/queue-monitor/retry-all" style="display:inline;margin-right:8px;">
+                    {$csrf}
                     <button class="btn" style="background:#0284c7;color:#fff;">Retry All</button>
                 </form>
                 <form method="POST" action="/queue-monitor/flush" style="display:inline;">
+                    {$csrf}
                     <button class="btn" style="background:#ef4444;color:#fff;">Flush Failed</button>
                 </form>
             </div>

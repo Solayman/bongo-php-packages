@@ -290,6 +290,7 @@ class Zoom
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             if (!empty($body)) {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
             }
@@ -304,6 +305,10 @@ class Zoom
                     'content' => $body,
                     'timeout' => 15,
                     'ignore_errors' => true,
+                ],
+                'ssl' => [
+                    'verify_peer'      => true,
+                    'verify_peer_name' => true,
                 ],
             ];
             $context = stream_context_create($opts);

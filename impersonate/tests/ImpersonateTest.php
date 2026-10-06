@@ -62,4 +62,41 @@ class ImpersonateTest extends TestCase
         $this->assertFalse(Impersonate::take($user, 'web'));
         $this->assertFalse(Impersonate::take(5, 'web'));
     }
+
+    public function testAuthorizationGuardsAndXssSanitization(): void
+    {
+        // 1. Current user without impersonation permission
+        $unauthorizedAdmin = new class {
+            public int $id = 2;
+            public function canImpersonate(): bool { return false; }
+        };
+        $target = (object) ['id' => 10, 'name' => 'Target User'];
+
+        Auth::guard('web')->login($unauthorizedAdmin);
+        $this->assertFalse(Impersonate::take($target, 'web'));
+
+        // 2. Target user protected from impersonation
+        $authorizedAdmin = new class {
+            public int $id = 1;
+            public function canImpersonate(): bool { return true; }
+        };
+        $protectedTarget = new class {
+            public int $id = 999;
+            public function canBeImpersonated(): bool { return false; }
+        };
+
+        Auth::guard('web')->login($authorizedAdmin);
+        $this->assertFalse(Impersonate::take($protectedTarget, 'web'));
+
+        // 3. Stored XSS payload in user name is safely escaped in banner
+        $xssUser = (object) ['id' => 42, 'name' => '<script>alert("xss")</script>'];
+        $took = Impersonate::take($xssUser, 'web');
+        $this->assertTrue($took);
+
+        $banner = Impersonate::renderBanner();
+        $this->assertFalse(str_contains($banner, '<script>alert("xss")</script>'));
+        $this->assertTrue(str_contains($banner, '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'));
+
+        Impersonate::leave('web');
+    }
 }
