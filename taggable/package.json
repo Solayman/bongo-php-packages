@@ -1,0 +1,16 @@
+{
+    "name": "taggable",
+    "description": "Zero-dependency polymorphic tagging engine for models with Unicode slugification, tag clouds, and usage counters",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Taggable\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/taggable.php",
+    "migrations": "database/migrations"
+}
