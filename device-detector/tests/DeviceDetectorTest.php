@@ -104,4 +104,14 @@ class DeviceDetectorTest extends TestCase
         $this->assertArrayHasKey('device', $arr);
         $this->assertArrayHasKey('browser', $arr);
     }
+
+    public function testMemoizationCache(): void
+    {
+        Device::flushCache();
+        $ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1';
+        $d1 = device($ua);
+        $d2 = device($ua);
+
+        $this->assertSame($d1, $d2);
+    }
 }

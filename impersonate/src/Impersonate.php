@@ -38,6 +38,14 @@ class Impersonate
             return false;
         }
 
+        // Authorization checks
+        if (is_object($currentAdmin) && method_exists($currentAdmin, 'canImpersonate') && !$currentAdmin->canImpersonate()) {
+            return false;
+        }
+        if (is_object($targetUser) && method_exists($targetUser, 'canBeImpersonated') && !$targetUser->canBeImpersonated()) {
+            return false;
+        }
+
         // Store impersonator in session
         Session::put(static::SESSION_KEY, (int) $adminId);
         Session::put(static::GUARD_KEY, $guard);
@@ -111,7 +119,9 @@ class Impersonate
         $guard = Session::get(static::GUARD_KEY) ?? 'web';
         $user = Auth::guard($guard)->user();
         $name = is_object($user) ? ($user->name ?? $user->email ?? 'User #' . $user->id) : 'User';
-        $adminId = static::impersonatorId();
+        $safeName = htmlspecialchars((string) $name, ENT_QUOTES, 'UTF-8');
+        $adminId = (int) (static::impersonatorId() ?? 0);
+        $csrfField = function_exists('csrf_field') ? csrf_field() : '';
 
         $actionUrl = '/impersonate/leave';
 
@@ -119,9 +129,10 @@ class Impersonate
 <div id="bongo-impersonate-banner" style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#b91c1c;color:#fff;padding:8px 16px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.3);">
     <div style="display:flex;align-items:center;gap:8px;">
         <span style="background:rgba(255,255,255,0.2);padding:2px 6px;border-radius:4px;font-weight:bold;text-transform:uppercase;font-size:11px;">Impersonating</span>
-        <span>You are currently signed in as <strong>{$name}</strong> (Original Admin ID: {$adminId})</span>
+        <span>You are currently signed in as <strong>{$safeName}</strong> (Original Admin ID: {$adminId})</span>
     </div>
     <form method="POST" action="{$actionUrl}" style="margin:0;">
+        {$csrfField}
         <button type="submit" style="background:#fff;color:#b91c1c;border:none;padding:4px 12px;border-radius:4px;font-weight:bold;font-size:12px;cursor:pointer;">
             Leave Impersonation &rarr;
         </button>

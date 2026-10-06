@@ -264,6 +264,10 @@ class WhatsApp
                 'timeout' => $this->timeout,
                 'ignore_errors' => true,
             ],
+            'ssl' => [
+                'verify_peer'      => true,
+                'verify_peer_name' => true,
+            ],
         ];
 
         $context = stream_context_create($options);

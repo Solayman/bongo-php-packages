@@ -64,7 +64,7 @@ class ApiDocsController
     protected function renderSwaggerHtml(string $jsonRoute, string $title): string
     {
         $escapedTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
-        $escapedRoute = htmlspecialchars($jsonRoute, ENT_QUOTES, 'UTF-8');
+        $jsonUrl = json_encode($jsonRoute, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
 
         return <<<HTML
 <!DOCTYPE html>
@@ -85,7 +85,7 @@ class ApiDocsController
     <script>
         window.onload = function() {
             SwaggerUIBundle({
-                url: "{$escapedRoute}",
+                url: {$jsonUrl},
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [

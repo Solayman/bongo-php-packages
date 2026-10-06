@@ -41,6 +41,9 @@ class Device implements JsonSerializable
         'Pingdom' => 'Pingdom',
     ];
 
+    /** @var array<string, static> */
+    protected static array $cache = [];
+
     public function __construct(?string $userAgent = null)
     {
         $this->userAgent = $userAgent ?? static::detectUserAgent();
@@ -49,7 +52,16 @@ class Device implements JsonSerializable
 
     public static function detect(?string $userAgent = null): static
     {
-        return new static($userAgent);
+        $ua = $userAgent ?? static::detectUserAgent();
+        if (isset(static::$cache[$ua])) {
+            return static::$cache[$ua];
+        }
+        return static::$cache[$ua] = new static($ua);
+    }
+
+    public static function flushCache(): void
+    {
+        static::$cache = [];
     }
 
     public static function detectUserAgent(): string
