@@ -24,36 +24,55 @@ class Tag extends Model
         'count' => 'int',
     ];
 
+    /** @var array<string, string> */
+    protected static array $slugCache = [];
+
     public static function tableName(): string
     {
         return function_exists('config') ? config('taggable.tags_table', 'tags') : (static::$table ?? 'tags');
     }
 
     /**
-     * Generate an SEO-friendly Unicode/Bengali compatible slug.
+     * Generate an SEO-friendly Unicode/Bengali compatible slug with memoization.
      */
     public static function slugify(string $text): string
     {
+        if (isset(self::$slugCache[$text])) {
+            return self::$slugCache[$text];
+        }
+
         // Strip script tags with their inner content first
-        $text = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $text) ?? $text;
+        $clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $text) ?? $text;
 
         // If sluggable package or global slug() helper is available, leverage it
         if (class_exists(\Bongo\Packages\Sluggable\Slugger::class)) {
-            return \Bongo\Packages\Sluggable\Slugger::slugify($text);
+            $slug = \Bongo\Packages\Sluggable\Slugger::slugify($clean);
+            if (count(self::$slugCache) < 500) {
+                self::$slugCache[$text] = $slug;
+            }
+            return $slug;
         }
 
         if (function_exists('slug')) {
-            return slug($text);
+            $slug = slug($clean);
+            if (count(self::$slugCache) < 500) {
+                self::$slugCache[$text] = $slug;
+            }
+            return $slug;
         }
 
         // Fallback pure-PHP unicode slugger
-        $text = trim(strip_tags($text));
-        $text = mb_strtolower($text, 'UTF-8');
-        // Replace non-alphanumeric unicode characters with hyphen
-        $slug = preg_replace('/[^\p{L}\p{Nd}\p{M}]+/u', '-', $text);
+        $clean = trim(strip_tags($clean));
+        $clean = mb_strtolower($clean, 'UTF-8');
+        $slug = preg_replace('/[^\p{L}\p{Nd}\p{M}]+/u', '-', $clean);
         $slug = trim($slug ?? '', '-');
+        $result = $slug !== '' ? $slug : 'tag-' . substr(md5($text . microtime()), 0, 8);
 
-        return $slug !== '' ? $slug : 'tag-' . substr(md5($text . microtime()), 0, 8);
+        if (count(self::$slugCache) < 500) {
+            self::$slugCache[$text] = $result;
+        }
+
+        return $result;
     }
 
     /**

@@ -250,4 +250,24 @@ class TaggableTest extends TestCase
         $this->assertTrue(is_array(popular_tags()));
         $this->assertTrue(is_array(tag_cloud()));
     }
+
+    public function testMemoizationAndBatchAttaching(): void
+    {
+        $post = new TestTaggablePost(['title' => 'Batch Test']);
+        $post->save();
+
+        // Batch attaching multiple tags
+        $post->tag(['Batch1', 'Batch2', 'Batch3']);
+        $this->assertCount(3, $post->tags());
+
+        // Second call should return memoized tags
+        $tags1 = $post->tags();
+        $tags2 = $post->tags();
+        $this->assertSame(count($tags1), count($tags2));
+
+        // Untagging one resets memoization and updates count
+        $post->untag('Batch2');
+        $this->assertCount(2, $post->tags());
+        $this->assertFalse($post->hasTag('Batch2'));
+    }
 }

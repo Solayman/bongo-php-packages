@@ -227,4 +227,21 @@ class ReviewsTest extends TestCase
         $this->assertNotNull($mgr);
         $this->assertTrue($mgr instanceof ReviewManager);
     }
+
+    public function testRatingSummary(): void
+    {
+        $product = TestReviewProduct::create(['name' => 'Tablet', 'price' => 200.00]);
+        $r1 = $product->addReview(1, 5);
+        $r2 = $product->addReview(2, 4);
+        $r1->approve();
+        $r2->approve();
+
+        $summary = $product->ratingSummary(approvedOnly: true);
+        $this->assertSame(4.5, $summary['average']);
+        $this->assertSame(2, $summary['count']);
+        $this->assertSame(1, $summary['distribution'][5]);
+        $this->assertSame(1, $summary['distribution'][4]);
+        $this->assertSame(50.0, $summary['percentages'][5]);
+        $this->assertSame(50.0, $summary['percentages'][4]);
+    }
 }

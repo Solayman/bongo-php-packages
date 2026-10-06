@@ -11,6 +11,9 @@ use System\Database\QueryBuilder;
 
 trait HasTags
 {
+    /** @var array<string, Tag[]>|null Instance cache for tags() */
+    protected ?array $_bongoTagsCache = null;
+
     /**
      * Get all tags associated with this model.
      *
@@ -18,6 +21,11 @@ trait HasTags
      */
     public function tags(?string $type = null): array
     {
+        $cacheKey = $type ?? '__all__';
+        if (isset($this->_bongoTagsCache[$cacheKey])) {
+            return $this->_bongoTagsCache[$cacheKey];
+        }
+
         $taggables = Taggable::query()
             ->where('taggable_type', static::class)
             ->where('taggable_id', (string) $this->getKey())
@@ -25,6 +33,7 @@ trait HasTags
 
         $tagIds = array_filter(array_map(fn($t) => (int) $t->tag_id, $taggables));
         if (empty($tagIds)) {
+            $this->_bongoTagsCache[$cacheKey] = [];
             return [];
         }
 
@@ -33,7 +42,9 @@ trait HasTags
             $query->where('type', $type);
         }
 
-        return $query->orderBy('name', 'ASC')->get();
+        $result = $query->orderBy('name', 'ASC')->get();
+        $this->_bongoTagsCache[$cacheKey] = $result;
+        return $result;
     }
 
     /**
@@ -122,18 +133,69 @@ trait HasTags
      */
     public function tag(string|array|Tag $tags, ?string $type = null): static
     {
+        $this->_bongoTagsCache = null;
         $tagList = $this->normalizeTagsInput($tags);
+        if (empty($tagList)) {
+            return $this;
+        }
 
-        foreach ($tagList as $tagItem) {
-            $tag = $tagItem instanceof Tag ? $tagItem : Tag::findOrCreate($tagItem, $type);
+        // Batch resolve/create tags
+        $slugsToLookup = [];
+        $rawTags = [];
+        foreach ($tagList as $item) {
+            if ($item instanceof Tag) {
+                $rawTags[] = $item;
+            } else {
+                $slug = Tag::slugify((string) $item);
+                $slugsToLookup[$slug] = (string) $item;
+            }
+        }
 
-            $existing = Taggable::query()
-                ->where('tag_id', $tag->id)
-                ->where('taggable_type', static::class)
-                ->where('taggable_id', (string) $this->getKey())
-                ->first();
+        if (!empty($slugsToLookup)) {
+            $existing = Tag::query()->whereIn('slug', array_keys($slugsToLookup))->get();
+            $existingBySlug = [];
+            foreach ($existing as $exTag) {
+                $existingBySlug[$exTag->slug] = $exTag;
+                $rawTags[] = $exTag;
+            }
 
-            if (!$existing) {
+            foreach ($slugsToLookup as $slug => $name) {
+                if (!isset($existingBySlug[$slug])) {
+                    $created = Tag::create([
+                        'name' => trim(strip_tags($name)),
+                        'slug' => $slug,
+                        'type' => $type,
+                        'count' => 0,
+                    ]);
+                    $rawTags[] = $created;
+                }
+            }
+        }
+
+        // De-duplicate tags by ID
+        $uniqueTags = [];
+        foreach ($rawTags as $tag) {
+            if ($tag && $tag->id) {
+                $uniqueTags[(int) $tag->id] = $tag;
+            }
+        }
+
+        if (empty($uniqueTags)) {
+            return $this;
+        }
+
+        // Batch fetch existing pivot attachments
+        $tagIds = array_keys($uniqueTags);
+        $existingPivots = Taggable::query()
+            ->whereIn('tag_id', $tagIds)
+            ->where('taggable_type', static::class)
+            ->where('taggable_id', (string) $this->getKey())
+            ->get();
+
+        $existingTagIds = array_flip(array_map(fn($p) => (int) $p->tag_id, $existingPivots));
+
+        foreach ($uniqueTags as $id => $tag) {
+            if (!isset($existingTagIds[$id])) {
                 $pivot = new Taggable([
                     'tag_id' => $tag->id,
                     'taggable_type' => static::class,
@@ -157,50 +219,83 @@ trait HasTags
      */
     public function untag(string|array|Tag|null $tags = null, ?string $type = null): static
     {
+        $this->_bongoTagsCache = null;
+
         if ($tags === null) {
             // Remove all tags (filtered by type if specified)
             $currentTags = $this->tags($type);
-            foreach ($currentTags as $tag) {
+            if (!empty($currentTags)) {
+                $tagIds = array_map(fn($t) => (int) $t->id, $currentTags);
                 Taggable::query()
-                    ->where('tag_id', $tag->id)
+                    ->whereIn('tag_id', $tagIds)
                     ->where('taggable_type', static::class)
                     ->where('taggable_id', (string) $this->getKey())
                     ->delete();
 
-                $tag->count = max(0, ((int) $tag->count) - 1);
-                $tag->save();
+                foreach ($currentTags as $tag) {
+                    $tag->count = max(0, ((int) $tag->count) - 1);
+                    $tag->save();
+                }
             }
+            $this->_bongoTagsCache = null;
             return $this;
         }
 
         $tagList = $this->normalizeTagsInput($tags);
-        foreach ($tagList as $tagItem) {
-            $slug = $tagItem instanceof Tag ? $tagItem->slug : Tag::slugify($tagItem);
-            $name = $tagItem instanceof Tag ? $tagItem->name : trim(strip_tags($tagItem));
+        if (empty($tagList)) {
+            $this->_bongoTagsCache = null;
+            return $this;
+        }
 
-            $tagQuery = Tag::query()->where('slug', $slug);
-            if ($type !== null) {
-                $tagQuery->where('type', $type);
-            }
-            /** @var Tag|null $tag */
-            $tag = $tagQuery->first();
+        $slugs = [];
+        foreach ($tagList as $item) {
+            $slugs[] = $item instanceof Tag ? $item->slug : Tag::slugify($item);
+        }
+        $slugs = array_unique(array_filter($slugs));
 
-            if (!$tag) {
-                continue;
-            }
+        if (empty($slugs)) {
+            $this->_bongoTagsCache = null;
+            return $this;
+        }
 
-            $deleted = Taggable::query()
-                ->where('tag_id', $tag->id)
-                ->where('taggable_type', static::class)
-                ->where('taggable_id', (string) $this->getKey())
-                ->delete();
+        $tagQuery = Tag::query()->whereIn('slug', $slugs);
+        if ($type !== null) {
+            $tagQuery->where('type', $type);
+        }
+        $matchingTags = $tagQuery->get();
+        if (empty($matchingTags)) {
+            $this->_bongoTagsCache = null;
+            return $this;
+        }
 
-            if ($deleted > 0) {
+        $tagIds = array_map(fn($t) => (int) $t->id, $matchingTags);
+        $pivots = Taggable::query()
+            ->whereIn('tag_id', $tagIds)
+            ->where('taggable_type', static::class)
+            ->where('taggable_id', (string) $this->getKey())
+            ->get();
+
+        if (empty($pivots)) {
+            $this->_bongoTagsCache = null;
+            return $this;
+        }
+
+        $attachedTagIds = array_flip(array_map(fn($p) => (int) $p->tag_id, $pivots));
+
+        Taggable::query()
+            ->whereIn('tag_id', array_keys($attachedTagIds))
+            ->where('taggable_type', static::class)
+            ->where('taggable_id', (string) $this->getKey())
+            ->delete();
+
+        foreach ($matchingTags as $tag) {
+            if (isset($attachedTagIds[(int) $tag->id])) {
                 $tag->count = max(0, ((int) $tag->count) - 1);
                 $tag->save();
             }
         }
 
+        $this->_bongoTagsCache = null;
         return $this;
     }
 
@@ -211,6 +306,7 @@ trait HasTags
      */
     public function retag(string|array|Tag $tags, ?string $type = null): static
     {
+        $this->_bongoTagsCache = null;
         $this->untag(null, $type);
         return $this->tag($tags, $type);
     }

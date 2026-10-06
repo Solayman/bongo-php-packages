@@ -165,4 +165,18 @@ class FeatureFlagsTest extends TestCase
         $val = feature_when('fast-cdn', fn() => 'fast', fn() => 'slow');
         $this->assertSame('fast', $val);
     }
+
+    public function testRuntimeCacheAndFlush(): void
+    {
+        Feature::activate('cache-flag');
+        $this->assertTrue(Feature::active('cache-flag'));
+
+        // Changing via deactivation flushes cache
+        Feature::deactivate('cache-flag');
+        $this->assertFalse(Feature::active('cache-flag'));
+
+        // Direct flushCache() works
+        Feature::flushCache();
+        $this->assertFalse(Feature::active('cache-flag'));
+    }
 }

@@ -129,4 +129,15 @@ class SluggableTest extends TestCase
 
         $this->assertNull(TestPost::findBySlug('non-existent-article'));
     }
+
+    public function testSluggerMemoizationAndFlushCache(): void
+    {
+        $slug1 = Slugger::slugify('Fast Performance & Memoization');
+        $slug2 = Slugger::slugify('Fast Performance & Memoization');
+        $this->assertSame($slug1, $slug2);
+
+        Slugger::flushCache();
+        $slug3 = Slugger::slugify('Fast Performance & Memoization');
+        $this->assertSame($slug1, $slug3);
+    }
 }

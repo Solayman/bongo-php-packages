@@ -14,6 +14,9 @@ class Wishlist
     protected ?string $sessionId = null;
     protected string $listName;
     protected ?WishlistModel $model = null;
+    /** @var ItemModel[]|null */
+    protected ?array $cachedItems = null;
+    protected ?int $cachedCount = null;
 
     /** @var bool In-memory fake mode */
     protected static bool $fake = false;
@@ -70,6 +73,8 @@ class Wishlist
         $clone = clone $this;
         $clone->listName = $name;
         $clone->model = null;
+        $clone->cachedItems = null;
+        $clone->cachedCount = null;
         return $clone;
     }
 
@@ -113,6 +118,8 @@ class Wishlist
      */
     public function add(mixed $item, int $quantity = 1, ?float $price = null, array $options = []): ItemModel
     {
+        $this->cachedItems = null;
+        $this->cachedCount = null;
         [$type, $id, $itemPrice] = $this->resolveItem($item);
         $finalPrice = $price ?? $itemPrice;
 
@@ -178,6 +185,8 @@ class Wishlist
      */
     public function remove(mixed $item): bool
     {
+        $this->cachedItems = null;
+        $this->cachedCount = null;
         [$type, $id] = $this->resolveItem($item);
 
         if (self::$fake) {
@@ -224,6 +233,16 @@ class Wishlist
             return false;
         }
 
+        // Check instance cache first to eliminate DB roundtrip
+        if ($this->cachedItems !== null) {
+            foreach ($this->cachedItems as $entry) {
+                if ($entry->item_type === $type && (string) $entry->item_id === (string) $id) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         $wishlist = $this->getModel();
         return ItemModel::query()
             ->where('wishlist_id', $wishlist->id)
@@ -242,8 +261,17 @@ class Wishlist
             return count(self::$fakeStorage[$key]['items'] ?? []);
         }
 
+        if ($this->cachedItems !== null) {
+            return count($this->cachedItems);
+        }
+
+        if ($this->cachedCount !== null) {
+            return $this->cachedCount;
+        }
+
         $wishlist = $this->getModel();
-        return ItemModel::query()->where('wishlist_id', $wishlist->id)->count();
+        $this->cachedCount = ItemModel::query()->where('wishlist_id', $wishlist->id)->count();
+        return $this->cachedCount;
     }
 
     /**
@@ -259,8 +287,14 @@ class Wishlist
             return array_map(fn($arr) => new ItemModel($arr), $items);
         }
 
+        if ($this->cachedItems !== null) {
+            return $this->cachedItems;
+        }
+
         $wishlist = $this->getModel();
-        return ItemModel::query()->where('wishlist_id', $wishlist->id)->get();
+        $this->cachedItems = ItemModel::query()->where('wishlist_id', $wishlist->id)->get();
+        $this->cachedCount = count($this->cachedItems);
+        return $this->cachedItems;
     }
 
     /**
@@ -268,6 +302,9 @@ class Wishlist
      */
     public function clear(): void
     {
+        $this->cachedItems = null;
+        $this->cachedCount = 0;
+
         if (self::$fake) {
             $key = $this->getFakeKey();
             self::$fakeStorage[$key]['items'] = [];
@@ -371,22 +408,25 @@ class Wishlist
                 ->first();
 
             if ($userList) {
-                // Merge items into existing user list
+                // Merge items into existing user list with single pre-query (eliminates N+1 loop)
                 $guestItems = ItemModel::query()->where('wishlist_id', $guestList->id)->get();
-                foreach ($guestItems as $guestItem) {
-                    $existingItem = ItemModel::query()
-                        ->where('wishlist_id', $userList->id)
-                        ->where('item_type', $guestItem->item_type)
-                        ->where('item_id', $guestItem->item_id)
-                        ->first();
+                $userItems = ItemModel::query()->where('wishlist_id', $userList->id)->get();
+                $existingMap = [];
+                foreach ($userItems as $uItem) {
+                    $existingMap[$uItem->item_type . ':' . $uItem->item_id] = $uItem;
+                }
 
-                    if ($existingItem) {
+                foreach ($guestItems as $guestItem) {
+                    $key = $guestItem->item_type . ':' . $guestItem->item_id;
+                    if (isset($existingMap[$key])) {
+                        $existingItem = $existingMap[$key];
                         $existingItem->quantity += $guestItem->quantity;
                         $existingItem->save();
                         $guestItem->delete();
                     } else {
                         $guestItem->wishlist_id = $userList->id;
                         $guestItem->save();
+                        $existingMap[$key] = $guestItem;
                     }
                 }
                 $guestList->delete();

@@ -219,4 +219,26 @@ class WishlistTest extends TestCase
         $wish->remove(['item_type' => 'book', 'item_id' => '101']);
         $this->assertSame(0, wishlist_count());
     }
+
+    public function testItemMemoization(): void
+    {
+        $wish = Wishlist::forSession('sess_memo_1', 'memo_list');
+        $wish->add('item_1', 2, 10.0);
+        $wish->add('item_2', 1, 20.0);
+
+        // Fetch items - caches in-memory
+        $items1 = $wish->items();
+        $this->assertCount(2, $items1);
+
+        // Subsequent count() and has() use cache without SQL
+        $this->assertSame(2, $wish->count());
+        $this->assertTrue($wish->has('item_1'));
+        $this->assertTrue($wish->has('item_2'));
+        $this->assertFalse($wish->has('item_3'));
+
+        // Removing item clears memoization
+        $wish->remove('item_1');
+        $this->assertSame(1, $wish->count());
+        $this->assertFalse($wish->has('item_1'));
+    }
 }

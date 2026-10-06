@@ -6,6 +6,17 @@ namespace Bongo\Packages\Sluggable;
 
 class Slugger
 {
+    /** @var array<string, string> */
+    protected static array $slugCache = [];
+
+    /**
+     * Clear memoized slug cache.
+     */
+    public static function flushCache(): void
+    {
+        self::$slugCache = [];
+    }
+
     /**
      * Generate a URL-friendly slug from any string, with full UTF-8/Bengali support.
      *
@@ -16,53 +27,63 @@ class Slugger
      */
     public static function slugify(string $string, string $separator = '-', int $maxLength = 0): string
     {
+        $cacheKey = $string . "\0" . $separator . "\0" . $maxLength;
+        if (isset(self::$slugCache[$cacheKey])) {
+            return self::$slugCache[$cacheKey];
+        }
+
         // 1. Remove HTML tags and entities
-        $string = strip_tags(html_entity_decode($string, ENT_QUOTES, 'UTF-8'));
+        $clean = strip_tags(html_entity_decode($string, ENT_QUOTES, 'UTF-8'));
 
         // 2. Replace common symbols
-        $string = str_replace(['&', '@'], [' and ', ' at '], $string);
+        $clean = str_replace(['&', '@'], [' and ', ' at '], $clean);
 
         // 3. Transliterate Latin accents if possible without mangling non-Latin scripts (Bengali, Arabic, etc.)
         if (function_exists('transliterator_transliterate')) {
-            $transliterated = @transliterator_transliterate('Latin-ASCII', $string);
+            $transliterated = @transliterator_transliterate('Latin-ASCII', $clean);
             if ($transliterated !== false && $transliterated !== '') {
-                $string = $transliterated;
+                $clean = $transliterated;
             }
         }
 
         // 4. Lowercase safely with multibyte support
-        $string = mb_strtolower(trim($string), 'UTF-8');
+        $clean = mb_strtolower(trim($clean), 'UTF-8');
 
         // 4. Replace whitespace, underscores, and dashes with standard space
-        $string = preg_replace('/[\s_\-]+/u', ' ', $string);
+        $clean = preg_replace('/[\s_\-]+/u', ' ', $clean);
 
         // 5. Replace any character that is NOT a unicode letter, mark, or number with empty/space
         // \p{L} = letters, \p{M} = combining marks (Bengali vowels, ligatures), \p{N} = numbers
-        $string = preg_replace('/[^\p{L}\p{M}\p{N}\s]/u', '', (string) $string);
+        $clean = preg_replace('/[^\p{L}\p{M}\p{N}\s]/u', '', (string) $clean);
 
         // 6. Replace multiple spaces with the designated separator
         $sep = preg_quote($separator, '/');
-        $string = preg_replace('/\s+/u', $separator, trim((string) $string));
+        $clean = preg_replace('/\s+/u', $separator, trim((string) $clean));
 
         // 7. Collapse duplicate separators
-        $string = preg_replace('/' . $sep . '+/u', $separator, (string) $string);
+        $clean = preg_replace('/' . $sep . '+/u', $separator, (string) $clean);
 
         // 8. Trim separator from start and end
-        $string = trim((string) $string, $separator);
+        $clean = trim((string) $clean, $separator);
 
         // 9. Handle max length truncation cleanly without breaking words
-        if ($maxLength > 0 && mb_strlen($string, 'UTF-8') > $maxLength) {
-            $truncated = mb_substr($string, 0, $maxLength, 'UTF-8');
+        if ($maxLength > 0 && mb_strlen($clean, 'UTF-8') > $maxLength) {
+            $truncated = mb_substr($clean, 0, $maxLength, 'UTF-8');
             $lastSep = mb_strrpos($truncated, $separator, 0, 'UTF-8');
             if ($lastSep !== false && $lastSep > ($maxLength * 0.5)) {
-                $string = mb_substr($truncated, 0, $lastSep, 'UTF-8');
+                $clean = mb_substr($truncated, 0, $lastSep, 'UTF-8');
             } else {
-                $string = $truncated;
+                $clean = $truncated;
             }
-            $string = trim($string, $separator);
+            $clean = trim($clean, $separator);
         }
 
-        return $string !== '' ? $string : 'n-a';
+        $result = $clean !== '' ? $clean : 'n-a';
+        if (count(self::$slugCache) < 1000) {
+            self::$slugCache[$cacheKey] = $result;
+        }
+
+        return $result;
     }
 
     /**
@@ -91,12 +112,14 @@ class Slugger
         $slug = $baseSlug;
         $counter = 1;
 
-        $isReserved = in_array(strtolower($slug), array_map('strtolower', $reserved), true);
+        // Pre-compute O(1) hash map for reserved slugs to eliminate allocations inside the loop
+        $reservedLookup = !empty($reserved) ? array_flip(array_map('strtolower', $reserved)) : [];
+        $isReserved = isset($reservedLookup[strtolower($slug)]);
 
         while ($isReserved || $existsChecker($slug)) {
             $slug = "{$baseSlug}{$separator}{$counter}";
             $counter++;
-            $isReserved = in_array(strtolower($slug), array_map('strtolower', $reserved), true);
+            $isReserved = isset($reservedLookup[strtolower($slug)]);
         }
 
         return $slug;

@@ -159,4 +159,20 @@ class NewsletterTest extends TestCase
         $uUrl = newsletter()->unsubscribeUrl($sub);
         $this->assertContains('/newsletter/unsubscribe/', $uUrl);
     }
+
+    public function testStatusMemoizationAndFlushCache(): void
+    {
+        $newsletter = new Newsletter();
+        $this->assertFalse($newsletter->isSubscribed('memo@example.com'));
+
+        $sub = $newsletter->subscribe('memo@example.com', 'Memo User');
+        $newsletter->confirm($sub->token);
+        $this->assertTrue($newsletter->isSubscribed('memo@example.com'));
+
+        Newsletter::flushCache();
+        $this->assertTrue($newsletter->isSubscribed('memo@example.com'));
+
+        $newsletter->unsubscribe('memo@example.com');
+        $this->assertFalse($newsletter->isSubscribed('memo@example.com'));
+    }
 }
