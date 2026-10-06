@@ -104,7 +104,7 @@ if ($isValid) {
 # Publish views to resources/views/vendor/sms/
 php bongo package:publish sms --views
 
-# Publish translations to lang/vendor/sms/
+# Publish translations to resources/lang/vendor/sms/
 php bongo package:publish sms --lang
 
 # Publish config to config/sms.php
