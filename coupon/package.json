@@ -1,0 +1,18 @@
+{
+    "name": "coupon",
+    "description": "Zero-dependency e-commerce promotions, voucher codes, and discount calculation engine",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\Coupon\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/coupon.php",
+    "commands": [
+        "Bongo\\Packages\\Coupon\\Commands\\CouponCheckCommand"
+    ]
+}

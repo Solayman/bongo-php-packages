@@ -1,0 +1,18 @@
+{
+    "name": "geoip",
+    "description": "Zero-dependency IP address geolocation, visitor country resolution, and currency/timezone detection engine",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\GeoIP\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/geoip.php",
+    "commands": [
+        "Bongo\\Packages\\GeoIP\\Commands\\GeoIpLookupCommand"
+    ]
+}

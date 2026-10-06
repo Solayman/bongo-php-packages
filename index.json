@@ -469,6 +469,58 @@
           }
         }
       }
+    },
+    "currency": {
+      "name": "currency",
+      "latest": "1.0.0",
+      "description": "Zero-dependency multi-currency conversion, exchange rate caching, and localized money formatting engine",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "coupon": {
+      "name": "coupon",
+      "latest": "1.0.0",
+      "description": "Zero-dependency e-commerce promotions, voucher codes, and discount calculation engine",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "push-notification": {
+      "name": "push-notification",
+      "latest": "1.0.0",
+      "description": "Zero-dependency Web Push (VAPID RFC 8292) and Firebase Cloud Messaging (FCM v1) notification engine",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
+    },
+    "geoip": {
+      "name": "geoip",
+      "latest": "1.0.0",
+      "description": "Zero-dependency IP address geolocation, visitor country resolution, and currency/timezone detection engine",
+      "versions": {
+        "1.0.0": {
+          "version": "1.0.0",
+          "requires": {
+            "bongo": "^0.9"
+          }
+        }
+      }
     }
   }
 }
