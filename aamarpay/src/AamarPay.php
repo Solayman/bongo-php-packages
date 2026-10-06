@@ -57,7 +57,7 @@ class AamarPay
             throw new RuntimeException("Invalid payment amount specified for AamarPay.");
         }
 
-        $tranId = (string) ($params['tran_id'] ?? ('AP_' . uniqid()));
+        $tranId = (string) ($params['tran_id'] ?? ('AP_' . bin2hex(random_bytes(8))));
         $amount = number_format((float) $params['amount'], 2, '.', '');
         $currency = (string) ($params['currency'] ?? $this->currency);
 
@@ -132,6 +132,9 @@ class AamarPay
     public function verify(string $tranId): array
     {
         $this->assertCredentials();
+        if (!preg_match('/^[A-Za-z0-9_-]{1,100}$/', $tranId)) {
+            throw new RuntimeException('Invalid AamarPay transaction id.');
+        }
 
         $params = [
             'request_id'    => $tranId,
@@ -149,26 +152,46 @@ class AamarPay
 
         $payStatus = (string) ($result['pay_status'] ?? $result['status_code'] ?? '');
         $isSuccess = strcasecmp($payStatus, 'Successful') === 0 || $payStatus === '2' || $payStatus === 'SUCCESS';
+        $amount = (float) ($result['amount'] ?? 0);
+        $currency = strtoupper((string) ($result['currency'] ?? 'BDT'));
 
+        // The payment must cover the transaction stored by initiate()
+        $stored = $this->storedTransaction($tranId);
+        if ($isSuccess && $stored) {
+            $storedCurrency = strtoupper((string) ($stored->currency ?? ''));
+            if (abs((float) $stored->amount - $amount) > 0.009 || ($storedCurrency !== '' && $storedCurrency !== $currency)) {
+                $isSuccess = false;
+                $payStatus = 'AMOUNT_MISMATCH';
+            }
+        }
+
+        $changed = null;
         if ($this->logTransactions) {
-            $this->updateTransactionLog($tranId, [
-                'status'           => $isSuccess ? 'COMPLETED' : 'FAILED',
+            // One way only: a completed payment is never marked failed by a later check
+            $changed = $this->transition($tranId, $isSuccess ? ['INITIATED', 'FAILED'] : ['INITIATED'], $isSuccess ? 'COMPLETED' : 'FAILED', [
                 'payment_method'   => $result['card_type'] ?? $result['payment_processor'] ?? null,
                 'bank_tran_id'     => $result['pg_txnid'] ?? $result['bank_trxid'] ?? null,
                 'response_payload' => json_encode($result),
             ]);
         }
 
-        return [
+        $verified = [
             'success'        => $isSuccess,
             'tran_id'        => $tranId,
-            'amount'         => (float) ($result['amount'] ?? 0),
-            'currency'       => (string) ($result['currency'] ?? 'BDT'),
+            'amount'         => $amount,
+            'currency'       => $currency,
             'status'         => $payStatus,
             'bank_tran_id'   => $result['pg_txnid'] ?? null,
             'payment_method' => $result['card_type'] ?? null,
             'raw'            => $result,
         ];
+
+        // Once per stored transaction, like the other gateways
+        if ($changed === true && class_exists(\System\Events\Event::class)) {
+            \System\Events\Event::dispatch($isSuccess ? 'payment.success' : 'payment.failed', ['gateway' => 'aamarpay'] + $verified);
+        }
+
+        return $verified;
     }
 
     /**
@@ -176,8 +199,12 @@ class AamarPay
      */
     public function isSuccess(array $post): bool
     {
-        $status = (string) ($post['pay_status'] ?? '');
-        return strcasecmp($status, 'Successful') === 0;
+        // The posted pay_status is chosen by whoever sends the request: always ask AamarPay
+        try {
+            return (bool) ($this->verify((string) ($post['mer_txnid'] ?? $post['tran_id'] ?? ''))['success'] ?? false);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function getStoreId(): string
@@ -273,15 +300,40 @@ class AamarPay
         }
     }
 
-    protected function updateTransactionLog(string $tranId, array $data): void
+    protected function storedTransaction(string $tranId): ?object
     {
         try {
-            if (class_exists(DB::class)) {
+            return class_exists(DB::class) ? (DB::table('aamarpay_transactions')->where('tran_id', $tranId)->first() ?: null) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Change the stored status under a row lock, only from one of $from.
+     * true = changed, false = refused (e.g. already COMPLETED), null = no stored row.
+     */
+    protected function transition(string $tranId, array $from, string $status, array $data): ?bool
+    {
+        try {
+            if (!class_exists(DB::class)) {
+                return null;
+            }
+            return DB::transaction(function () use ($tranId, $from, $status, $data): ?bool {
+                $row = DB::table('aamarpay_transactions')->where('tran_id', $tranId)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (!in_array((string) $row->status, $from, true)) {
+                    return false;
+                }
+                $data['status'] = $status;
                 $data['updated_at'] = date('Y-m-d H:i:s');
                 DB::table('aamarpay_transactions')->where('tran_id', $tranId)->update($data);
-            }
-        } catch (\Throwable) {
-            // Silently continue if table does not exist
+                return true;
+            });
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

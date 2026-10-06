@@ -83,3 +83,7 @@ if ($result['success']) {
     $bankTranId = $result['bank_tran_id'];
 }
 ```
+
+## Verification and events
+
+Never decide from the posted callback data: `verify($tranId)` (and `isSuccess($post)`, which now calls it) asks AamarPay's trxcheck API. The paid amount and currency must match the transaction stored by `initiate()` (otherwise `AMOUNT_MISMATCH`). A completed payment is never changed back to failed, and `payment.success` / `payment.failed` (with `gateway` = `aamarpay`) fire once per stored transaction.

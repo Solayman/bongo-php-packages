@@ -6,7 +6,6 @@ namespace Bongo\Packages\Aamarpay\Controllers;
 
 use Bongo\Packages\Aamarpay\AamarPay;
 use System\Http\Request;
-use System\Http\Response;
 
 class AamarPayController
 {
@@ -27,15 +26,20 @@ class AamarPayController
 
     public function success(Request $request): string
     {
-        $tranId = (string) ($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
+        $tranId = $this->safeId($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
         $status = 'PENDING';
         $verified = false;
+        $amount = null;
+        $currency = 'BDT';
 
         if ($tranId !== '') {
             try {
+                // Only AamarPay's own answer counts, never the posted pay_status or amount
                 $verification = $this->gateway->verify($tranId);
                 $verified = $verification['success'] ?? false;
-                $status = $verification['status'] ?? 'SUCCESS';
+                $status = $verification['status'] ?? 'PENDING';
+                $amount = $verification['amount'] ?? null;
+                $currency = $verification['currency'] ?? 'BDT';
             } catch (\Throwable $e) {
                 $status = 'VERIFICATION_ERROR';
             }
@@ -45,15 +49,16 @@ class AamarPayController
             'tran_id'  => $tranId,
             'verified' => $verified,
             'status'   => $status,
-            'amount'   => $request->input('amount'),
-            'currency' => $request->input('currency', 'BDT'),
+            'amount'   => $amount,
+            'currency' => $currency,
         ]);
     }
 
     public function fail(Request $request): string
     {
-        $tranId = (string) ($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
-        $reason = (string) ($request->input('error_title') ?: 'Payment failed or declined by card issuer.');
+        $tranId = $this->safeId($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
+        // Fixed wording: anyone can post to this URL, so its text is never shown back
+        $reason = 'Payment failed or declined by card issuer.';
 
         return view('aamarpay::fail', [
             'tran_id' => $tranId,
@@ -63,10 +68,15 @@ class AamarPayController
 
     public function cancel(Request $request): string
     {
-        $tranId = (string) ($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
+        $tranId = $this->safeId($request->input('mer_txnid') ?: $request->input('tran_id') ?: '');
 
         return view('aamarpay::cancel', [
             'tran_id' => $tranId,
         ]);
+    }
+
+    protected function safeId(mixed $value): string
+    {
+        return is_string($value) && preg_match('/^[A-Za-z0-9_-]{1,100}$/', $value) ? $value : '';
     }
 }
