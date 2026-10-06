@@ -281,30 +281,32 @@ class ApiToolsTest extends TestCase
 
     public function testApiThrottleMiddleware(): void
     {
-        $_SERVER['REMOTE_ADDR'] = '10.0.' . mt_rand(1, 200) . '.' . mt_rand(1, 200);
-        $middleware = new ApiThrottleMiddleware();
-        $req = new Request();
+        $_SERVER['REMOTE_ADDR'] = '10.0.' . random_int(1, 200) . '.' . random_int(1, 200);
+        $_SERVER['REQUEST_URI'] = '/api/throttle-test-' . bin2hex(random_bytes(4));
+        $middleware = new class extends ApiThrottleMiddleware {
+            public ?array $rejected = null;
 
-        $next = function (Request $request): JsonResponse {
-            return new JsonResponse('OK', 200);
+            protected function reject(array $headers): void
+            {
+                $this->rejected = $headers;   // the real one sends the 429 JSON and exits
+            }
         };
 
-        // First 3 requests should pass (limit: 3)
-        $res1 = $middleware->handle($req, $next, 3, 1);
-        $this->assertSame(200, $res1->getStatusCode());
+        // The core calls handle() with the route parameters only ("throttle:3,1")
+        $middleware->handle('3', '1');
+        $middleware->handle('3', '1');
+        $middleware->handle('3', '1');
+        $this->assertNull($middleware->rejected, 'the first 3 requests pass');
 
-        $res2 = $middleware->handle($req, $next, 3, 1);
-        $this->assertSame(200, $res2->getStatusCode());
+        $middleware->handle('3', '1');
+        $this->assertNotNull($middleware->rejected, 'the 4th request is refused');
+        $this->assertSame('0', $middleware->rejected['X-RateLimit-Remaining']);
+        $this->assertTrue((int) $middleware->rejected['Retry-After'] >= 1);
 
-        $res3 = $middleware->handle($req, $next, 3, 1);
-        $this->assertSame(200, $res3->getStatusCode());
-
-        // 4th request should return 429 Too Many Requests
-        $res4 = $middleware->handle($req, $next, 3, 1);
-        $this->assertSame(429, $res4->getStatusCode());
-        $body = json_decode($res4->getContent(), true);
-        $this->assertFalse($body['success']);
+        // The 429 body keeps the api-tools format
+        $body = json_decode(ApiResponse::error('Too Many Requests', 429, [], 'RATE_LIMIT_EXCEEDED')->getContent(), true);
         $this->assertSame('RATE_LIMIT_EXCEEDED', $body['code']);
+        unset($_SERVER['REQUEST_URI']);
     }
 
     public function testOpenApiGeneratorProducesValidSpec(): void

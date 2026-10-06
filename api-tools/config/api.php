@@ -21,7 +21,8 @@ return [
     | Interactive documentation interfaces (Swagger UI and Redoc).
     |
     */
-    'docs_enabled' => env('API_DOCS_ENABLED', true),
+    // Off in production unless API_DOCS_ENABLED=true: the spec lists every route and its middleware
+    'docs_enabled' => env('API_DOCS_ENABLED', env('APP_ENV', 'production') !== 'production'),
     'docs_route'   => env('API_DOCS_ROUTE', '/api/docs'),
     'redoc_route'  => env('API_REDOC_ROUTE', '/api/redoc'),
     'json_route'   => env('API_JSON_ROUTE', '/docs/openapi.json'),

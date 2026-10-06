@@ -3,7 +3,7 @@
 use Bongo\Packages\ApiTools\Controllers\ApiDocsController;
 use System\Routing\Route;
 
-$docsEnabled = function_exists('config') ? (bool) config('api.docs_enabled', true) : true;
+$docsEnabled = function_exists('config') ? (bool) config('api.docs_enabled', env('APP_ENV', 'production') !== 'production') : false;
 
 if ($docsEnabled) {
     $jsonRoute = function_exists('config') ? (string) config('api.json_route', '/docs/openapi.json') : '/docs/openapi.json';
