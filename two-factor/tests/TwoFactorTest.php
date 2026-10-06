@@ -7,6 +7,10 @@ namespace Bongo\Packages\TwoFactor\Tests;
 use Bongo\Packages\TwoFactor\Controllers\TwoFactorController;
 use Bongo\Packages\TwoFactor\QrCode;
 use Bongo\Packages\TwoFactor\TwoFactor;
+use System\Cache\Cache;
+use System\Cache\RateLimiter;
+use System\Database\DB;
+use System\Database\Schema\Schema;
 use System\Http\Request;
 use System\Testing\TestCase;
 
@@ -16,6 +20,95 @@ class TwoFactorTest extends TestCase
     {
         if (class_exists(\System\View\ViewEngine::class)) {
             \System\View\ViewEngine::addNamespace('two-factor', dirname(__DIR__) . '/views');
+        }
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            @session_start();
+        }
+        $_SESSION = [];
+        if (!Schema::hasTable('two_factor_auth')) {
+            (require dirname(__DIR__) . '/database/migrations/2026_10_04_000000_create_two_factor_auth_table.php')->up();
+        }
+        DB::table('two_factor_auth')->delete(true);
+        (new RateLimiter())->clear('2fa:1');
+        Cache::forget('2fa:last_step:1');
+    }
+
+    /** Call a protected controller method */
+    private function call(TwoFactorController $controller, string $method, array $args = [])
+    {
+        $ref = new \ReflectionMethod($controller, $method);
+        $ref->setAccessible(true);
+        return $ref->invokeArgs($controller, $args);
+    }
+
+    private function enable(string $secret): TwoFactorController
+    {
+        $controller = new TwoFactorController();
+        DB::table('two_factor_auth')->insert([
+            'user_id'        => 1,
+            'secret'         => $this->call($controller, 'sealSecret', [$secret]),
+            'recovery_codes' => json_encode([TwoFactor::hashRecoveryCode('AAAA-1111')]),
+            'confirmed_at'   => date('Y-m-d H:i:s'),
+            'created_at'     => date('Y-m-d H:i:s'),
+            'updated_at'     => date('Y-m-d H:i:s'),
+        ]);
+        return $controller;
+    }
+
+    public function testACodeWorksOnlyOnce(): void
+    {
+        $secret = TwoFactor::generateSecret(16);
+        $controller = $this->enable($secret);
+        $code = TwoFactor::generateTotp($secret);
+
+        $this->assertTrue($this->call($controller, 'checkSecondFactor', [1, $code, '']));
+        $this->assertFalse($this->call($controller, 'checkSecondFactor', [1, $code, '']), 'the same code cannot be replayed');
+    }
+
+    public function testGuessingIsLimited(): void
+    {
+        $secret = TwoFactor::generateSecret(16);
+        $controller = $this->enable($secret);
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertFalse($this->call($controller, 'checkSecondFactor', [1, '000000' === TwoFactor::generateTotp($secret) ? '111111' : '000000', '']));
+        }
+        // Even the right code is refused while the user is locked out
+        $this->assertFalse($this->call($controller, 'checkSecondFactor', [1, TwoFactor::generateTotp($secret), '']));
+    }
+
+    public function testRecoveryCodeIsSingleUse(): void
+    {
+        $controller = $this->enable(TwoFactor::generateSecret(16));
+        $this->assertTrue($this->call($controller, 'checkSecondFactor', [1, '', 'AAAA-1111']));
+        $this->assertFalse($this->call($controller, 'checkSecondFactor', [1, '', 'AAAA-1111']));
+    }
+
+    public function testSecretsAreStoredEncrypted(): void
+    {
+        $secret = TwoFactor::generateSecret(16);
+        $this->enable($secret);
+        $stored = (string) DB::table('two_factor_auth')->where('user_id', 1)->first()->secret;
+        $this->assertFalse(str_contains($stored, $secret), 'the database never holds the plain secret');
+        $this->assertSame($secret, $this->call(new TwoFactorController(), 'openSecret', [$stored]));
+        $this->assertSame('PLAINOLDSECRET', $this->call(new TwoFactorController(), 'openSecret', ['PLAINOLDSECRET']), 'older plain rows still work');
+        $this->assertSame('', $this->call(new TwoFactorController(), 'openSecret', ['enc:broken']), 'unreadable secrets never verify');
+    }
+
+    public function testVerifiedSessionBelongsToOneUser(): void
+    {
+        $controller = new TwoFactorController();
+        $this->call($controller, 'markVerified', [1]);
+        $this->assertTrue($this->call($controller, 'isVerified', [1]));
+        $this->assertFalse($this->call($controller, 'isVerified', [2]), 'another account in the same browser must pass its own challenge');
+    }
+
+    public function testRoutesNeedASignedInUserAndCsrf(): void
+    {
+        $router = new \System\Routing\Router();
+        $router->loadFile(dirname(__DIR__) . '/routes.php');
+        foreach ($router->routes() as $route) {
+            $this->assertTrue(in_array('auth', $route->middleware, true), "{$route->path} must require sign-in");
+            $this->assertTrue(in_array('web', $route->middleware, true), "{$route->path} needs session + CSRF");
         }
     }
 
