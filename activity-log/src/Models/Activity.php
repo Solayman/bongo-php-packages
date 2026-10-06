@@ -183,4 +183,15 @@ class Activity extends Model
 
         return $activities;
     }
+
+    /**
+     * Alias for loadMorphs().
+     *
+     * @param array<Activity> $activities
+     * @return array<Activity>
+     */
+    public static function eagerLoadMorph(array $activities): array
+    {
+        return static::loadMorphs($activities);
+    }
 }

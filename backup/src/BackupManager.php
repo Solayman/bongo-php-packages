@@ -48,6 +48,8 @@ class BackupManager
         $tmpDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bongo_backup_' . uniqid();
         mkdir($tmpDir, 0755, true);
 
+        $rawAppName = (string) ($this->config['app_name'] ?? (function_exists('config') ? config('app.name', 'bongo') : 'bongo'));
+        $appName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower($rawAppName)) ?: 'bongo';
         $timestamp = date('Y-m-d_His');
         $rawFilename = (string) ($options['filename'] ?? "{$appName}_backup_{$timestamp}.zip");
         $zipFilename = basename(str_replace(["\0", '\\'], ['', '/'], $rawFilename));

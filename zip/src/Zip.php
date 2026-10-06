@@ -78,6 +78,7 @@ class Zip
         }
 
         $name = $downloadName ?? basename($archivePath);
+        $name = str_replace(["\r", "\n", '"'], '', $name);
         $size = filesize($archivePath);
 
         header('Content-Type: application/zip');
