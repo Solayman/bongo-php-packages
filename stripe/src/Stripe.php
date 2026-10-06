@@ -236,7 +236,7 @@ class Stripe
         $response = $this->request('POST', '/refunds', $payload);
 
         // Update database record if exists
-        $this->updatePaymentStatusByIntent($paymentIntentId, 'refunded');
+        $this->changeStatus('payment_intent_id', $paymentIntentId, [], 'refunded');
 
         return $response;
     }
@@ -321,29 +321,50 @@ class Stripe
 
     /**
      * Dispatch framework events based on Stripe webhook event type.
+     *
+     * Each payment fires payment.success exactly once:
+     * - Stripe delivers events at least once, so every event id is handled once;
+     * - Checkout payments are reported by their checkout.session.* event only when actually paid
+     *   (delayed methods such as bank debits wait for checkout.session.async_payment_succeeded);
+     * - payment_intent.succeeded reports PaymentIntents made with createPaymentIntent();
+     * - the stored row changes under a lock, and a paid payment is never marked failed.
      */
     protected function handleWebhookEvent(array $event): void
     {
-        $type = $event['type'] ?? '';
-        $obj = $event['data']['object'] ?? [];
+        $type = (string) ($event['type'] ?? '');
+        $obj = (array) ($event['data']['object'] ?? []);
+        $eventKey = isset($event['id']) ? 'event:' . $event['id'] : '';
+
+        if ($eventKey !== '' && $this->remembered($eventKey)) {
+            return;   // a retry of an event that was already handled
+        }
 
         if (class_exists(Event::class)) {
             Event::dispatch('stripe.webhook', $event);
         }
 
+        $paid = ['paid', 'succeeded'];
         switch ($type) {
             case 'checkout.session.completed':
+            case 'checkout.session.async_payment_succeeded':
                 $sessionId = $obj['id'] ?? null;
                 $paymentIntentId = $obj['payment_intent'] ?? null;
-                $status = ($obj['payment_status'] ?? '') === 'paid' ? 'paid' : 'completed';
+                $paymentStatus = (string) ($obj['payment_status'] ?? '');
 
-                $this->updatePaymentStatusBySession($sessionId, $status, $paymentIntentId);
+                if ($paymentStatus !== 'paid' && $paymentStatus !== 'no_payment_required') {
+                    // Not paid yet (delayed payment method): async_payment_succeeded follows
+                    $this->changeStatus('session_id', $sessionId, [...$paid, 'failed'], 'processing', $paymentIntentId);
+                    break;
+                }
 
-                if (class_exists(Event::class)) {
+                $changed = $this->changeStatus('session_id', $sessionId, $paid, 'paid', $paymentIntentId);
+                $first = $changed === true || ($changed === null && $sessionId !== null && !$this->remembered('paid:' . $sessionId));
+                if ($first && class_exists(Event::class)) {
                     Event::dispatch('payment.success', [
                         'gateway'           => 'stripe',
                         'session_id'        => $sessionId,
                         'payment_intent_id' => $paymentIntentId,
+                        'order_id'          => $obj['metadata']['order_id'] ?? ($obj['client_reference_id'] ?? null),
                         'amount'            => isset($obj['amount_total']) ? ((float) $obj['amount_total']) / 100 : 0,
                         'currency'          => $obj['currency'] ?? 'usd',
                         'customer_email'    => $obj['customer_details']['email'] ?? null,
@@ -352,14 +373,26 @@ class Stripe
                 }
                 break;
 
+            case 'checkout.session.async_payment_failed':
+                if ($this->changeStatus('session_id', $obj['id'] ?? null, [...$paid, 'failed'], 'failed') === true && class_exists(Event::class)) {
+                    Event::dispatch('payment.failed', [
+                        'gateway'    => 'stripe',
+                        'session_id' => $obj['id'] ?? null,
+                        'order_id'   => $obj['metadata']['order_id'] ?? ($obj['client_reference_id'] ?? null),
+                        'error'      => 'The delayed payment failed',
+                        'raw'        => $obj,
+                    ]);
+                }
+                break;
+
             case 'payment_intent.succeeded':
                 $intentId = $obj['id'] ?? null;
-                $this->updatePaymentStatusByIntent($intentId, 'succeeded');
-
-                if (class_exists(Event::class)) {
+                // Checkout payments were already reported by their checkout.session event
+                if ($this->isDirectIntent($intentId) && $this->changeStatus('payment_intent_id', $intentId, $paid, 'succeeded') === true && class_exists(Event::class)) {
                     Event::dispatch('payment.success', [
                         'gateway'           => 'stripe',
                         'payment_intent_id' => $intentId,
+                        'order_id'          => $obj['metadata']['order_id'] ?? null,
                         'amount'            => isset($obj['amount']) ? ((float) $obj['amount']) / 100 : 0,
                         'currency'          => $obj['currency'] ?? 'usd',
                         'customer_email'    => $obj['receipt_email'] ?? null,
@@ -370,18 +403,77 @@ class Stripe
 
             case 'payment_intent.payment_failed':
                 $intentId = $obj['id'] ?? null;
-                $this->updatePaymentStatusByIntent($intentId, 'failed');
-
-                if (class_exists(Event::class)) {
+                if ($this->changeStatus('payment_intent_id', $intentId, [...$paid, 'failed'], 'failed') === true && class_exists(Event::class)) {
                     Event::dispatch('payment.failed', [
                         'gateway'           => 'stripe',
                         'payment_intent_id' => $intentId,
+                        'order_id'          => $obj['metadata']['order_id'] ?? null,
                         'error'             => $obj['last_payment_error']['message'] ?? 'Payment failed',
                         'raw'               => $obj,
                     ]);
                 }
                 break;
         }
+    }
+
+    /**
+     * Change stripe_payments.status under a row lock, unless it is one of $unless.
+     * true = changed, false = refused (e.g. already paid), null = no stored row.
+     */
+    protected function changeStatus(string $column, ?string $id, array $unless, string $to, ?string $paymentIntentId = null): ?bool
+    {
+        if (!$id || !class_exists(\System\Database\DB::class)) {
+            return null;
+        }
+
+        try {
+            return \System\Database\DB::transaction(function () use ($column, $id, $unless, $to, $paymentIntentId): ?bool {
+                $row = \System\Database\DB::table('stripe_payments')->where($column, $id)->lockForUpdate()->first();
+                if (!$row) {
+                    return null;
+                }
+                if (in_array((string) $row->status, $unless, true)) {
+                    return false;
+                }
+                $updates = ['status' => $to, 'updated_at' => date('Y-m-d H:i:s')];
+                if ($paymentIntentId !== null) {
+                    $updates['payment_intent_id'] = $paymentIntentId;
+                }
+                \System\Database\DB::table('stripe_payments')->where($column, $id)->update($updates);
+                return true;
+            });
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** A PaymentIntent made with createPaymentIntent() (not one created by a Checkout Session) */
+    protected function isDirectIntent(?string $intentId): bool
+    {
+        if (!$intentId || !class_exists(\System\Database\DB::class)) {
+            return false;
+        }
+        try {
+            $row = \System\Database\DB::table('stripe_payments')->where('payment_intent_id', $intentId)->first();
+            return $row !== null && empty($row->session_id);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** True when $key was handled before; otherwise remembers it for 30 days and returns false */
+    protected function remembered(string $key): bool
+    {
+        try {
+            $cacheKey = 'stripe:' . sha1($key);
+            if (\System\Cache\Cache::get($cacheKey)) {
+                return true;
+            }
+            \System\Cache\Cache::put($cacheKey, 1, 2592000);
+        } catch (\Throwable $e) {
+            // no cache configured: the stored row still guards payments
+        }
+        return false;
     }
 
     /**
@@ -480,46 +572,6 @@ class Stripe
             \System\Database\DB::table('stripe_payments')->insert($data);
         } catch (\Throwable $e) {
             // Silently continue if table does not exist or db not connected
-        }
-    }
-
-    protected function updatePaymentStatusBySession(?string $sessionId, string $status, ?string $paymentIntentId = null): void
-    {
-        if (!$sessionId || !class_exists(\System\Database\DB::class)) {
-            return;
-        }
-
-        try {
-            $updates = [
-                'status'     => $status,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
-            if ($paymentIntentId !== null) {
-                $updates['payment_intent_id'] = $paymentIntentId;
-            }
-            \System\Database\DB::table('stripe_payments')
-                ->where('session_id', $sessionId)
-                ->update($updates);
-        } catch (\Throwable $e) {
-            // Silently continue
-        }
-    }
-
-    protected function updatePaymentStatusByIntent(?string $intentId, string $status): void
-    {
-        if (!$intentId || !class_exists(\System\Database\DB::class)) {
-            return;
-        }
-
-        try {
-            \System\Database\DB::table('stripe_payments')
-                ->where('payment_intent_id', $intentId)
-                ->update([
-                    'status'     => $status,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-        } catch (\Throwable $e) {
-            // Silently continue
         }
     }
 

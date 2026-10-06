@@ -8,6 +8,10 @@ use Bongo\Packages\Stripe\Controllers\StripeController;
 use Bongo\Packages\Stripe\Stripe;
 use InvalidArgumentException;
 use RuntimeException;
+use System\Database\DB;
+use System\Database\Schema\Schema;
+use System\Events\Event;
+use System\Http\HttpException;
 use System\Http\Request;
 use System\Testing\TestCase;
 
@@ -261,5 +265,96 @@ class StripeTest extends TestCase
         $this->assertContains('cs_test_rendered', $successOutput);
 
         $_GET = [];
+    }
+
+    private array $events = ['payment.success' => 0, 'payment.failed' => 0];
+
+    private function listen(): void
+    {
+        foreach (array_keys($this->events) as $name) {
+            $this->events[$name] = 0;
+            Event::forget($name);
+            Event::listen($name, function () use ($name) {
+                $this->events[$name]++;
+            });
+        }
+    }
+
+    /** Send a signed webhook; a fresh event id unless one is given (retries reuse it) */
+    private function deliver(string $type, array $object, ?string $eventId = null): string
+    {
+        $secret = 'whsec_idempotency';
+        $eventId ??= 'evt_' . bin2hex(random_bytes(6));
+        $payload = (string) json_encode(['id' => $eventId, 'type' => $type, 'data' => ['object' => $object]]);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", $secret);
+        (new Stripe(['secret' => 'sk_test', 'webhook_secret' => $secret]))->verifyWebhook($payload, "t={$timestamp},v1={$signature}", $secret);
+        return $eventId;
+    }
+
+    private function seed(array $row): void
+    {
+        if (!Schema::hasTable('stripe_payments')) {
+            (require glob(dirname(__DIR__) . '/database/migrations/*.php')[0])->up();
+        }
+        DB::table('stripe_payments')->insert($row + ['amount' => 45, 'currency' => 'usd', 'status' => 'pending', 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
+    }
+
+    private function status(string $column, string $id): string
+    {
+        return (string) DB::table('stripe_payments')->where($column, $id)->first()->status;
+    }
+
+    public function testCheckoutPaymentFiresSuccessOnce(): void
+    {
+        $session = 'cs_' . bin2hex(random_bytes(6));
+        $intent = 'pi_' . bin2hex(random_bytes(6));
+        $this->seed(['session_id' => $session]);
+        $this->listen();
+
+        $paid = ['id' => $session, 'payment_status' => 'paid', 'payment_intent' => $intent, 'amount_total' => 4500, 'currency' => 'usd', 'metadata' => ['order_id' => 'ORD_9']];
+        $eventId = $this->deliver('checkout.session.completed', $paid);
+        $this->deliver('checkout.session.completed', $paid, $eventId);                     // Stripe retry
+        $this->deliver('payment_intent.succeeded', ['id' => $intent, 'amount' => 4500]);    // the twin event
+        $this->deliver('checkout.session.completed', $paid);                               // replay with another id
+        $this->deliver('payment_intent.payment_failed', ['id' => $intent]);                // late failure
+
+        $this->assertSame(1, $this->events['payment.success'], 'one checkout, one payment.success');
+        $this->assertSame(0, $this->events['payment.failed']);
+        $this->assertSame('paid', $this->status('session_id', $session), 'a paid payment is never marked failed');
+    }
+
+    public function testDelayedPaymentWaitsUntilTheMoneyArrives(): void
+    {
+        $session = 'cs_' . bin2hex(random_bytes(6));
+        $this->seed(['session_id' => $session]);
+        $this->listen();
+
+        $this->deliver('checkout.session.completed', ['id' => $session, 'payment_status' => 'unpaid', 'amount_total' => 4500]);
+        $this->assertSame(0, $this->events['payment.success'], 'a bank debit that has not cleared is not a payment');
+        $this->assertSame('processing', $this->status('session_id', $session));
+
+        $this->deliver('checkout.session.async_payment_succeeded', ['id' => $session, 'payment_status' => 'paid', 'amount_total' => 4500]);
+        $this->assertSame(1, $this->events['payment.success']);
+        $this->assertSame('paid', $this->status('session_id', $session));
+    }
+
+    public function testDirectPaymentIntentFiresOnce(): void
+    {
+        $intent = 'pi_' . bin2hex(random_bytes(6));
+        $this->seed(['payment_intent_id' => $intent]);
+        $this->listen();
+
+        $this->deliver('payment_intent.succeeded', ['id' => $intent, 'amount' => 4500]);
+        $this->deliver('payment_intent.succeeded', ['id' => $intent, 'amount' => 4500]);
+        $this->assertSame(1, $this->events['payment.success']);
+        $this->assertSame('succeeded', $this->status('payment_intent_id', $intent));
+    }
+
+    public function testDemoCheckoutRouteIsOffByDefault(): void
+    {
+        $_POST = ['amount' => '0.50', 'order_id' => 'ORD_EXPENSIVE'];
+        $this->assertThrows(HttpException::class, fn() => (new StripeController())->checkout(new Request()));
+        $_POST = [];
     }
 }

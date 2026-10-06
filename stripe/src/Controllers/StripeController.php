@@ -15,10 +15,16 @@ class StripeController
      */
     public function checkout(Request $request): string
     {
+        // The browser chooses amount and order here: demo/testing only (STRIPE_DEMO_CHECKOUT=true).
+        // In an app, call Stripe::checkout() from your controller with the order loaded on the server.
+        if (!config('stripe.demo_checkout', false)) {
+            abort(404);
+        }
+
         $amount = (float) $request->input('amount', 0);
         $currency = (string) $request->input('currency', 'usd');
         $name = (string) $request->input('name', 'Order Payment');
-        $orderId = (string) $request->input('order_id', uniqid('ORD_'));
+        $orderId = (string) $request->input('order_id', 'ORD_' . bin2hex(random_bytes(6)));
         $email = $request->input('customer_email');
 
         try {
@@ -41,7 +47,7 @@ class StripeController
             return view('stripe::cancel');
         } catch (Throwable $e) {
             return view('stripe::cancel', [
-                'error' => $e->getMessage(),
+                'error' => 'The payment could not be started. Please try again.',
             ]);
         }
     }

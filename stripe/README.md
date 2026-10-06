@@ -156,3 +156,14 @@ Or via directive:
 - **Pure PHP 8.0+**: Zero external Composer packages. Uses native `curl` and `hash_hmac`.
 - **HMAC-SHA256 Webhook Verification**: Constant-time signature verification (`hash_equals`) and replay attack prevention with timestamp tolerance checks.
 - **Amounts Handled Safely**: Automatically converts standard float amounts to Stripe zero-decimal units or integer cents.
+
+## Payment events: once per payment
+
+`payment.success` fires **exactly once** per payment, with `order_id` from your metadata:
+
+- Stripe retries webhooks; every event id is handled once.
+- A Checkout payment is reported by `checkout.session.completed` only when `payment_status` is `paid`. Delayed methods (bank debits) are reported later by `checkout.session.async_payment_succeeded`; `checkout.session.async_payment_failed` fires `payment.failed`.
+- `payment_intent.succeeded` reports PaymentIntents made with `createPaymentIntent()` (Checkout's own PaymentIntent is not reported twice).
+- A paid payment is never marked failed. Events for payments need the `stripe_payments` table (run the migrations).
+
+`POST /stripe/checkout` takes `amount` and `order_id` from the browser, so it is **off** unless `STRIPE_DEMO_CHECKOUT=true` (testing only). In your app call `Stripe::checkout([...])` from your own controller with the amount of the order loaded on the server.
