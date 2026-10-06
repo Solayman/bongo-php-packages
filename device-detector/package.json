@@ -1,0 +1,18 @@
+{
+    "name": "device-detector",
+    "description": "Zero-dependency pure PHP user-agent parser and device, browser, OS, and crawler detection engine",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\DeviceDetector\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/device.php",
+    "commands": [
+        "Bongo\\Packages\\DeviceDetector\\Commands\\DeviceDetectCommand"
+    ]
+}

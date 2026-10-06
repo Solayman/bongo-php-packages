@@ -259,4 +259,79 @@ class ImageTest extends TestCase
             Image::fromBinary('');
         });
     }
+
+    public function testInterventionImageReadAndMake(): void
+    {
+        $canvas = Image::create(120, 80, '#ff0000');
+        $png = $canvas->toPng();
+
+        // 1. Read from binary
+        $img1 = Image::read($png);
+        $this->assertSame(120, $img1->width());
+        $this->assertSame(80, $img1->height());
+
+        // 2. Make from Data URI
+        $dataUri = $canvas->dataUri('png');
+        $img2 = Image::make($dataUri);
+        $this->assertSame(120, $img2->width());
+        $this->assertSame(80, $img2->height());
+
+        // 3. Make from GdImage
+        $gd = imagecreatetruecolor(50, 50);
+        $img3 = Image::read($gd);
+        $this->assertSame(50, $img3->width());
+        $this->assertSame(50, $img3->height());
+
+        // 4. Clone from existing Image
+        $img4 = Image::read($img1);
+        $this->assertSame(120, $img4->width());
+    }
+
+    public function testImageManagerAndHelperFunction(): void
+    {
+        require_once dirname(__DIR__) . '/src/helpers.php';
+
+        $manager = image();
+        $this->assertTrue($manager instanceof \Bongo\Packages\Image\ImageManager);
+
+        $created = $manager->create(60, 40, '#0000ff');
+        $this->assertSame(60, $created->width());
+
+        $helperImg = image($created->toPng());
+        $this->assertTrue($helperImg instanceof Image);
+        $this->assertSame(60, $helperImg->width());
+        $this->assertSame(40, $helperImg->height());
+    }
+
+    public function testInterventionManipulationsAndColorTools(): void
+    {
+        $img = Image::create(100, 100, '#ffffff');
+
+        // Circle
+        $img->circle(40, 50, 50, '#ff0000');
+
+        // Pixelate, colorize, gamma
+        $img->pixelate(5);
+        $img->colorize(10, -10, 0);
+        $img->gamma(1.2);
+
+        // Fill & Pick color
+        $img->fill('#00ff00', 5, 5);
+        $color = $img->pickColor(5, 5, 'hex');
+        $this->assertSame('#00ff00', strtolower($color));
+
+        // Insert / Place
+        $watermark = Image::create(20, 20, '#000000');
+        $img->insert($watermark, 'top-left');
+        $img->place($watermark, 'bottom-right', opacity: 50);
+
+        // Orientate
+        $img->orientate();
+
+        // Response format
+        $resp = $img->response('png');
+        $this->assertArrayHasKey('content', $resp);
+        $this->assertSame('image/png', $resp['headers']['Content-Type']);
+    }
 }
+

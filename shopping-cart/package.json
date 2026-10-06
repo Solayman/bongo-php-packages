@@ -1,0 +1,18 @@
+{
+    "name": "shopping-cart",
+    "description": "Fluent, zero-dependency shopping cart management engine with multi-instance support, taxation, shipping, and coupon integration",
+    "version": "1.0.0",
+    "author": "Bongo Framework Team",
+    "autoload": {
+        "psr-4": {
+            "Bongo\\Packages\\ShoppingCart\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "config": "config/cart.php",
+    "commands": [
+        "Bongo\\Packages\\ShoppingCart\\Commands\\CartClearCommand"
+    ]
+}

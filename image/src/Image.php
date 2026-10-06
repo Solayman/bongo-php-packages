@@ -128,6 +128,92 @@ class Image
         return new static($im, null, $mime);
     }
 
+    /**
+     * Read an image from any source (Intervention Image style):
+     * - File path string
+     * - Data URI (data:image/...;base64,...)
+     * - Binary string
+     * - Existing GdImage resource
+     * - UploadedFile or SplFileInfo
+     * - Existing Image instance
+     */
+    public static function read(mixed $source): static
+    {
+        if ($source instanceof static) {
+            return clone $source;
+        }
+
+        if ($source instanceof GdImage) {
+            imagealphablending($source, false);
+            imagesavealpha($source, true);
+            return new static($source, null, 'image/png');
+        }
+
+        if (is_object($source)) {
+            if (method_exists($source, 'getPathname')) {
+                return static::load((string) $source->getPathname());
+            }
+            if (isset($source->tmp_name) && is_string($source->tmp_name)) {
+                return static::load($source->tmp_name);
+            }
+        }
+
+        if (is_string($source)) {
+            // Check Data URI
+            if (preg_match('/^data:image\/([a-zA-Z0-9\+\-]+);base64,(.+)$/s', $source, $matches)) {
+                $binary = base64_decode($matches[2]);
+                if ($binary === false) {
+                    throw new ImageException("Invalid base64 encoded data URI.");
+                }
+                $img = static::fromBinary($binary);
+                $img->mimeType = 'image/' . $matches[1];
+                return $img;
+            }
+
+            // Check if file exists on disk
+            if (file_exists($source) && is_file($source)) {
+                return static::load($source);
+            }
+
+            // Check if binary image data
+            if (
+                str_starts_with($source, "\xFF\xD8\xFF") || // JPEG
+                str_starts_with($source, "\x89PNG\r\n\x1a\n") || // PNG
+                str_starts_with($source, 'GIF87a') || str_starts_with($source, 'GIF89a') || // GIF
+                (str_starts_with($source, 'RIFF') && str_contains(substr($source, 8, 8), 'WEBP')) || // WEBP
+                str_starts_with($source, 'BM') // BMP
+            ) {
+                return static::fromBinary($source);
+            }
+
+            // Check URL
+            if (filter_var($source, FILTER_VALIDATE_URL)) {
+                $data = @file_get_contents($source);
+                if ($data === false) {
+                    throw new ImageException("Failed to fetch image from URL: {$source}");
+                }
+                return static::fromBinary($data);
+            }
+
+            // Fallback: try fromBinary or throw
+            try {
+                return static::fromBinary($source);
+            } catch (\Throwable) {
+                throw new ImageException("Unsupported image source or file not found: " . substr($source, 0, 100));
+            }
+        }
+
+        throw new ImageException("Invalid image source type: " . get_debug_type($source));
+    }
+
+    /**
+     * Alias for read (Intervention Image v2 compatibility).
+     */
+    public static function make(mixed $source): static
+    {
+        return static::read($source);
+    }
+
     public function width(): int
     {
         $this->ensureLoaded();
@@ -565,6 +651,165 @@ class Image
         }
 
         return $this;
+    }
+
+    /**
+     * Auto-orient image using EXIF Orientation tag (Intervention Image style).
+     */
+    public function orientate(): static
+    {
+        $this->ensureLoaded();
+
+        if ($this->sourcePath !== null && function_exists('exif_read_data')) {
+            $exif = @exif_read_data($this->sourcePath);
+            $orientation = $exif['Orientation'] ?? 1;
+
+            match ((int) $orientation) {
+                2 => $this->flipHorizontal(),
+                3 => $this->rotate(180),
+                4 => $this->flipVertical(),
+                5 => $this->rotate(-90)->flipHorizontal(),
+                6 => $this->rotate(-90),
+                7 => $this->rotate(90)->flipHorizontal(),
+                8 => $this->rotate(90),
+                default => null,
+            };
+        }
+
+        return $this;
+    }
+
+    /**
+     * Apply pixelation effect (Intervention Image style).
+     */
+    public function pixelate(int $size = 10): static
+    {
+        $this->ensureLoaded();
+        if ($size > 0 && defined('IMG_FILTER_PIXELATE')) {
+            imagefilter($this->image, IMG_FILTER_PIXELATE, $size, true);
+        }
+        return $this;
+    }
+
+    /**
+     * Adjust RGB color balance (-100 to +100).
+     */
+    public function colorize(int $red, int $green, int $blue): static
+    {
+        $this->ensureLoaded();
+        if (defined('IMG_FILTER_COLORIZE')) {
+            imagefilter($this->image, IMG_FILTER_COLORIZE, $red, $green, $blue);
+        }
+        return $this;
+    }
+
+    /**
+     * Apply gamma correction.
+     */
+    public function gamma(float $input, float $output = 1.0): static
+    {
+        $this->ensureLoaded();
+        if ($input > 0 && $output > 0) {
+            imagegammacorrect($this->image, $input, $output);
+        }
+        return $this;
+    }
+
+    /**
+     * Draw a filled circle.
+     */
+    public function circle(int $diameter, int $x, int $y, string|array $color = '#ffffff'): static
+    {
+        $this->ensureLoaded();
+        $col = static::allocateColor($this->image, $color);
+        imagefilledellipse($this->image, $x, $y, $diameter, $diameter, $col);
+        return $this;
+    }
+
+    /**
+     * Pick color at coordinates (x, y).
+     * Formats: 'rgba', 'rgb', 'hex', 'int', 'array'.
+     */
+    public function pickColor(int $x, int $y, string $format = 'rgba'): string|int|array
+    {
+        $this->ensureLoaded();
+        $rgb = imagecolorat($this->image, $x, $y);
+        $r = ($rgb >> 16) & 0xFF;
+        $g = ($rgb >> 8) & 0xFF;
+        $b = $rgb & 0xFF;
+        $alpha = ($rgb & 0x7F000000) >> 24;
+        $a = round((127 - $alpha) / 127, 2);
+
+        return match ($format) {
+            'hex' => sprintf('#%02x%02x%02x', $r, $g, $b),
+            'rgb' => "rgb({$r}, {$g}, {$b})",
+            'rgba' => "rgba({$r}, {$g}, {$b}, {$a})",
+            'int' => $rgb,
+            default => ['r' => $r, 'g' => $g, 'b' => $b, 'a' => $a],
+        };
+    }
+
+    /**
+     * Fill image with color (entire canvas or flood fill at x, y).
+     */
+    public function fill(string|array $color, ?int $x = null, ?int $y = null): static
+    {
+        $this->ensureLoaded();
+        $col = static::allocateColor($this->image, $color);
+        if ($x !== null && $y !== null) {
+            imagefill($this->image, $x, $y, $col);
+        } else {
+            imagefill($this->image, 0, 0, $col);
+        }
+        return $this;
+    }
+
+    /**
+     * Insert another image onto this image (Intervention Image v2 style).
+     */
+    public function insert(mixed $source, string $position = 'top-left', int $x = 0, int $y = 0): static
+    {
+        $overlay = $source instanceof static ? $source : static::read($source);
+        return $this->watermark($overlay, $position, 100, $x, $y);
+    }
+
+    /**
+     * Place another image onto this image with opacity (Intervention Image v3 style).
+     */
+    public function place(mixed $source, string $position = 'top-left', int $x = 0, int $y = 0, int $opacity = 100): static
+    {
+        $overlay = $source instanceof static ? $source : static::read($source);
+        return $this->watermark($overlay, $position, $opacity, $x, $y);
+    }
+
+    /**
+     * Get binary content and HTTP headers for responding with the image.
+     */
+    public function response(?string $format = null, int $quality = 90): array
+    {
+        $format = $format ?? match ($this->mimeType) {
+            'image/jpeg' => 'jpeg',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            default => 'png',
+        };
+
+        $content = $this->encode($format, $quality);
+        $mime = match (strtolower($format)) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'image/png',
+        };
+
+        return [
+            'content' => $content,
+            'headers' => [
+                'Content-Type' => $mime,
+                'Content-Length' => (string) strlen($content),
+            ],
+        ];
     }
 
     /**
