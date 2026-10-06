@@ -199,7 +199,8 @@ class SMSTest extends TestCase
         $phone = '01788888888';
         $purpose = 'test_limit_' . bin2hex(random_bytes(3));
         OTP::send($phone, $purpose, 'log');
-        preg_match('/(\d{6})/', end(LogDriver::sent())['message'] ?? '', $matches);
+        $messages = LogDriver::sent();
+        preg_match('/(\d{6})/', end($messages)['message'] ?? '', $matches);
         $code = $matches[1] ?? '';
         $wrong = $code === '111111' ? '222222' : '111111';
 
