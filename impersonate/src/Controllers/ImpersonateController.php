@@ -4,32 +4,28 @@ namespace Bongo\Packages\Impersonate\Controllers;
 
 use Bongo\Packages\Impersonate\Impersonate;
 use System\Http\Request;
-use System\Http\Response;
 
 class ImpersonateController
 {
     public function take(Request $request, $id)
     {
-        $guard = $request->input('guard', 'web');
-        $success = Impersonate::take((int) $id, $guard);
-
-        if ($success) {
-            $redirectUrl = config('impersonate.redirect_to', '/');
-            return Response::redirect($redirectUrl)->with('success', 'You are now impersonating this user.');
+        // The guard comes from config, never from the request
+        if (Impersonate::take((int) $id, (string) config('impersonate.guard', 'web'))) {
+            flash('success', 'You are now impersonating this user.');
+            redirect((string) config('impersonate.redirect_to', '/'));
         }
 
-        return Response::redirect('/')->with('error', 'Unable to impersonate user.');
+        flash('error', 'Unable to impersonate user.');
+        redirect('/');
     }
 
     public function leave(Request $request)
     {
-        $success = Impersonate::leave();
-
-        $redirectUrl = config('impersonate.leave_redirect_to', '/admin');
-        if ($success) {
-            return Response::redirect($redirectUrl)->with('success', 'Returned to your original account.');
+        if (Impersonate::leave()) {
+            flash('success', 'Returned to your original account.');
+            redirect((string) config('impersonate.leave_redirect_to', '/'));
         }
 
-        return Response::redirect('/');
+        redirect('/');
     }
 }

@@ -3,6 +3,7 @@
 namespace Bongo\Packages\Impersonate;
 
 use System\Auth\Auth;
+use System\Auth\Gate;
 use System\Http\Session;
 use System\Log\Logger;
 
@@ -38,11 +39,12 @@ class Impersonate
             return false;
         }
 
-        // Authorization checks
-        if (is_object($currentAdmin) && method_exists($currentAdmin, 'canImpersonate') && !$currentAdmin->canImpersonate()) {
-            return false;
-        }
-        if (is_object($targetUser) && method_exists($targetUser, 'canBeImpersonated') && !$targetUser->canBeImpersonated()) {
+        if (!is_object($currentAdmin) || !is_object($targetUser) || !static::allowed($currentAdmin, $targetUser)) {
+            try {
+                Logger::instance()->warning("User {$adminId} was refused impersonating user {$targetId}", ['admin_id' => $adminId, 'target_id' => $targetId]);
+            } catch (\Throwable $e) {
+                // Logger silenced
+            }
             return false;
         }
 
@@ -64,6 +66,29 @@ class Impersonate
         }
 
         return true;
+    }
+
+    /**
+     * Deny by default. The impersonator needs canImpersonate() === true on the user model,
+     * or a Gate rule: Gate::define('impersonate', fn($admin, $target) => $admin->role === 'admin').
+     * A target can opt out with canBeImpersonated(); other impersonators (admins) are never targets
+     * unless their model says canBeImpersonated() === true.
+     */
+    public static function allowed(object $admin, object $target): bool
+    {
+        $mayImpersonate = method_exists($admin, 'canImpersonate')
+            ? $admin->canImpersonate() === true
+            : Gate::forUser($admin)->allows('impersonate', $target);
+        if (!$mayImpersonate) {
+            return false;
+        }
+        if (method_exists($target, 'canBeImpersonated')) {
+            return $target->canBeImpersonated() === true;
+        }
+        $targetIsAdmin = method_exists($target, 'canImpersonate')
+            ? $target->canImpersonate() === true
+            : Gate::forUser($target)->allows('impersonate', $admin);
+        return !$targetIsAdmin;
     }
 
     public static function leave(?string $guard = null): bool
