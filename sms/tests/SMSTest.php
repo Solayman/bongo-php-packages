@@ -193,4 +193,32 @@ class SMSTest extends TestCase
         $reuse = OTP::verify($phone, $code, $purpose);
         $this->assertFalse($reuse);
     }
+
+    public function testGuessesStopAtMaxAttemptsEvenForTheRightCode(): void
+    {
+        $phone = '01788888888';
+        $purpose = 'test_limit_' . bin2hex(random_bytes(3));
+        OTP::send($phone, $purpose, 'log');
+        preg_match('/(\d{6})/', end(LogDriver::sent())['message'] ?? '', $matches);
+        $code = $matches[1] ?? '';
+        $wrong = $code === '111111' ? '222222' : '111111';
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertFalse(OTP::verify($phone, $wrong, $purpose));
+        }
+        $this->assertFalse(OTP::verify($phone, $code, $purpose), 'after 5 wrong guesses the code is dead');
+    }
+
+    public function testOtpRoutesUseSessionAndRateLimits(): void
+    {
+        $router = new \System\Routing\Router();
+        $router->loadFile(dirname(__DIR__) . '/routes.php');
+        foreach ($router->routes() as $route) {
+            $this->assertTrue(in_array('web', $route->middleware, true), "{$route->path} needs the session and CSRF");
+            if (in_array('POST', $route->methods, true)) {
+                $limited = array_filter($route->middleware, fn($m) => str_starts_with((string) $m, 'throttle:'));
+                $this->assertTrue($limited !== [], "POST {$route->path} must be rate limited");
+            }
+        }
+    }
 }

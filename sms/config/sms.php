@@ -58,5 +58,8 @@ return [
         'expires_in'       => (int) env('SMS_OTP_EXPIRES_IN', 300), // in seconds (5 min)
         'max_attempts'     => (int) env('SMS_OTP_MAX_ATTEMPTS', 5),
         'resend_cooldown'  => (int) env('SMS_OTP_RESEND_COOLDOWN', 60), // in seconds (1 min)
+        // Per-IP limits on the /otp routes (requests per minute): stop SMS pumping and code guessing
+        'send_per_minute'   => (int) env('SMS_OTP_SEND_PER_MINUTE', 3),
+        'verify_per_minute' => (int) env('SMS_OTP_VERIFY_PER_MINUTE', 10),
     ],
 ];

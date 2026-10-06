@@ -129,3 +129,9 @@ Run the package test suite:
 ```bash
 php bongo package:test sms
 ```
+
+## OTP security
+
+- `/otp/*` routes use the `web` middleware (session + CSRF).
+- Per-IP limits: `SMS_OTP_SEND_PER_MINUTE` (default 3) on `POST /otp/send`, `SMS_OTP_VERIFY_PER_MINUTE` (default 10) on `POST /otp/verify`. This stops SMS pumping (an attacker making you pay for SMS to many numbers).
+- `OTP::verify()` checks and counts each attempt in one locked database step: parallel guesses cannot exceed `max_attempts`, and a code is accepted only once.
