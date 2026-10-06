@@ -48,6 +48,36 @@ class QueueMonitorTest extends TestCase
         $this->assertSame(0, $statsAfter['failed']);
     }
 
+    public function testRetryPutsFailedJobsBackOnTheQueue(): void
+    {
+        $GLOBALS['config']['queue']['driver'] = 'database';
+        DB::table('jobs')->delete(true);
+        foreach (['a', 'b', 'c'] as $name) {
+            DB::table('failed_jobs')->insert(['queue' => 'default', 'payload' => "payload-$name", 'exception' => 'boom']);
+        }
+        $first = QueueMonitor::failedJobs()[0];
+
+        $this->assertTrue(QueueMonitor::retry($first->id));
+        $this->assertSame(1, DB::table('jobs')->count(), 'the job is queued again');
+        $this->assertFalse(QueueMonitor::retry($first->id), 'a job is retried once');
+
+        $this->assertSame(2, QueueMonitor::retryAll());
+        $this->assertSame(3, DB::table('jobs')->count());
+        $this->assertSame(0, QueueMonitor::stats()['failed']);
+        $this->assertSame('database', QueueMonitor::stats()['driver']);
+        DB::table('jobs')->delete(true);
+    }
+
+    public function testDashboardRoutesNeedASignedInUser(): void
+    {
+        $router = new \System\Routing\Router();
+        $router->loadFile(dirname(__DIR__) . '/routes.php');
+        foreach ($router->routes() as $route) {
+            $this->assertTrue(in_array('auth', $route->middleware, true), "{$route->path} must require sign-in");
+            $this->assertTrue(in_array('web', $route->middleware, true), "{$route->path} needs session + CSRF");
+        }
+    }
+
     public function testFlushClearsAllFailedJobs(): void
     {
         DB::table('failed_jobs')->insert([
