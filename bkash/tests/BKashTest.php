@@ -5,6 +5,9 @@ namespace Bongo\Packages\Bkash\Tests;
 use Bongo\Packages\Bkash\BKash;
 use InvalidArgumentException;
 use RuntimeException;
+use System\Database\DB;
+use System\Database\Schema\Schema;
+use System\Events\Event;
 use System\Testing\TestCase;
 
 class BKashTest extends TestCase
@@ -142,56 +145,133 @@ class BKashTest extends TestCase
         $this->assertSame('https://tokenized.sandbox.bka.sh/checkout/PAY_1001', $res['gateway_url']);
     }
 
-    public function testCallbackVerificationSuccessAndFailure(): void
+
+    /** A gateway whose API answers from $remote: ['execute' => [...], 'query' => [...]] */
+    private function gateway(array &$remote): BKash
     {
-        BKash::setMockTransport(function ($url, $method, $data, $headers) {
+        BKash::setMockTransport(function ($url, $method, $data, $headers) use (&$remote) {
             if (str_contains($url, '/token/grant')) {
                 return ['id_token' => 'token_mock', 'expires_in' => 3600];
             }
             if (str_contains($url, '/checkout/execute')) {
-                return [
-                    'statusCode'        => '0000',
-                    'transactionStatus' => 'Completed',
-                    'paymentID'         => $data['paymentID'],
-                    'trxID'             => 'TRX_SUCCESS_99',
-                    'amount'            => '350.00',
-                    'currency'          => 'BDT',
-                    'customerMsisdn'    => '01700000000',
-                ];
+                return $remote['execute'];
+            }
+            if (str_contains($url, '/payment/status')) {
+                return $remote['query'];
             }
             return [];
         });
+        return new BKash(['app_key' => 'key', 'app_secret' => 'sec', 'username' => 'user', 'password' => 'pwd']);
+    }
 
-        $gateway = new BKash([
-            'app_key'    => 'key',
-            'app_secret' => 'sec',
-            'username'   => 'user',
-            'password'   => 'pwd',
+    private function seedPayment(string $paymentId, string $status = 'INITIATED'): void
+    {
+        if (!Schema::hasTable('bkash_transactions')) {
+            (require dirname(__DIR__) . '/database/migrations/2026_10_04_000000_create_bkash_transactions_table.php')->up();
+        }
+        DB::table('bkash_transactions')->where('payment_id', $paymentId)->delete();
+        DB::table('bkash_transactions')->insert([
+            'payment_id' => $paymentId, 'amount' => 350, 'currency' => 'BDT', 'status' => $status,
+            'invoice_no' => 'INV-' . $paymentId, 'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
         ]);
+    }
 
-        // Success flow
-        $verified = $gateway->verify([
-            'paymentID' => 'PAY_1001',
-            'status'    => 'success',
-        ]);
-        $this->assertTrue($verified['valid']);
-        $this->assertSame('COMPLETED', $verified['status']);
-        $this->assertSame('TRX_SUCCESS_99', $verified['trx_id']);
+    private function storedStatus(string $paymentId): string
+    {
+        return (string) DB::table('bkash_transactions')->where('payment_id', $paymentId)->first()->status;
+    }
 
-        // Cancel flow (no server execute call needed)
-        $cancelled = $gateway->verify([
-            'paymentID' => 'PAY_1001',
-            'status'    => 'cancel',
-        ]);
+    /** @return array<string, int> how often each payment event fired */
+    private function countEvents(): array
+    {
+        $counts = ['payment.success' => 0, 'payment.failed' => 0, 'invoice' => ''];
+        Event::forget('payment.success');
+        Event::forget('payment.failed');
+        Event::listen('payment.success', function ($payload) use (&$counts) {
+            $counts['payment.success']++;
+            $counts['invoice'] = $payload['invoice_no'] ?? '';
+        });
+        Event::listen('payment.failed', function () use (&$counts) {
+            $counts['payment.failed']++;
+        });
+        $this->events = &$counts;
+        return $counts;
+    }
+
+    private array $events = [];
+
+    public function testSuccessFiresOnceAndReplaysNeverUndoIt(): void
+    {
+        $this->seedPayment('PAY_A');
+        $paid = ['statusCode' => '0000', 'transactionStatus' => 'Completed', 'trxID' => 'TRX_A', 'amount' => '350.00', 'currency' => 'BDT'];
+        $remote = ['execute' => $paid, 'query' => $paid];
+        $gateway = $this->gateway($remote);
+        $this->countEvents();
+
+        $first = $gateway->verify(['paymentID' => 'PAY_A', 'status' => 'success']);
+        $this->assertTrue($first['valid']);
+        $this->assertSame('COMPLETED', $this->storedStatus('PAY_A'));
+        $this->assertSame(1, $this->events['payment.success']);
+        $this->assertSame('INV-PAY_A', $this->events['invoice'], 'the event names the order');
+
+        // bKash refuses a second execute: a replayed success link must not flip the payment to FAILED
+        $remote['execute'] = ['statusCode' => '2062', 'statusMessage' => 'The payment has already been completed'];
+        $replay = $gateway->verify(['paymentID' => 'PAY_A', 'status' => 'success']);
+        $this->assertTrue($replay['valid']);
+        $this->assertSame('COMPLETED', $this->storedStatus('PAY_A'));
+
+        // A forged cancel link for a paid order changes nothing
+        $gateway->verify(['paymentID' => 'PAY_A', 'status' => 'cancel']);
+        $this->assertSame('COMPLETED', $this->storedStatus('PAY_A'));
+
+        $this->assertSame(1, $this->events['payment.success'], 'payment.success fires exactly once');
+        $this->assertSame(0, $this->events['payment.failed']);
+    }
+
+    public function testCancelOnlyTouchesUnpaidPaymentsAndPaymentCanStillComplete(): void
+    {
+        $this->seedPayment('PAY_B');
+        $remote = ['execute' => [], 'query' => ['statusCode' => '0000', 'transactionStatus' => 'Initiated']];
+        $gateway = $this->gateway($remote);
+        $this->countEvents();
+
+        $cancelled = $gateway->verify(['paymentID' => 'PAY_B', 'status' => 'cancel']);
         $this->assertFalse($cancelled['valid']);
-        $this->assertSame('CANCELLED', $cancelled['status']);
+        $this->assertSame('CANCELLED', $this->storedStatus('PAY_B'));
+        $this->assertSame(1, $this->events['payment.failed']);
 
-        // Failure flow
-        $failed = $gateway->verify([
-            'paymentID' => 'PAY_1001',
-            'status'    => 'failure',
-        ]);
-        $this->assertFalse($failed['valid']);
-        $this->assertSame('FAILED', $failed['status']);
+        // Cancelling twice fires nothing new
+        $gateway->verify(['paymentID' => 'PAY_B', 'status' => 'cancel']);
+        $this->assertSame(1, $this->events['payment.failed']);
+
+        // The customer pays after all: bKash's answer wins over the earlier cancel
+        $remote['execute'] = ['statusCode' => '0000', 'transactionStatus' => 'Completed', 'trxID' => 'TRX_B', 'amount' => '350.00'];
+        $this->assertTrue($gateway->verify(['paymentID' => 'PAY_B'])['valid']);
+        $this->assertSame('COMPLETED', $this->storedStatus('PAY_B'));
+        $this->assertSame(1, $this->events['payment.success']);
+    }
+
+    public function testUnfinishedPaymentStaysPending(): void
+    {
+        $this->seedPayment('PAY_C');
+        $remote = [
+            'execute' => ['statusCode' => '2056', 'statusMessage' => 'Invalid Payment State'],
+            'query'   => ['statusCode' => '0000', 'transactionStatus' => 'Initiated'],
+        ];
+        $this->countEvents();
+
+        $result = $this->gateway($remote)->verify(['paymentID' => 'PAY_C']);
+        $this->assertFalse($result['valid']);
+        $this->assertSame('PENDING', $result['status']);
+        $this->assertSame('INITIATED', $this->storedStatus('PAY_C'), 'an attacker cannot fail a payment the customer is still making');
+        $this->assertSame(0, $this->events['payment.failed']);
+    }
+
+    public function testMalformedPaymentIdIsRejected(): void
+    {
+        $remote = ['execute' => [], 'query' => []];
+        $gateway = $this->gateway($remote);
+        $this->assertThrows(InvalidArgumentException::class, fn() => $gateway->verify(['paymentID' => '../../x']));
+        $this->assertThrows(InvalidArgumentException::class, fn() => $gateway->verify(['paymentID' => '']));
     }
 }
