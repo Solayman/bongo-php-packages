@@ -175,4 +175,14 @@ class NewsletterTest extends TestCase
         $newsletter->unsubscribe('memo@example.com');
         $this->assertFalse($newsletter->isSubscribed('memo@example.com'));
     }
+
+    public function testPublicUnsubscribeAcceptsOnlyTheToken(): void
+    {
+        $n = \Bongo\Packages\Newsletter\Newsletter::fake();
+        $n->subscribe('victim@example.com');
+        $this->assertFalse($n->unsubscribeByToken('victim@example.com'), 'an email address is not a token');
+        $this->assertSame(0, $n->count('unsubscribed'), 'nobody was unsubscribed');
+        $this->assertFalse($n->unsubscribeByToken(str_repeat('a', 64)), 'an unknown token changes nothing');
+        \Bongo\Packages\Newsletter\Newsletter::stopFaking();
+    }
 }
