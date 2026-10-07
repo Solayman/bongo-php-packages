@@ -102,4 +102,30 @@ class TelegramTest extends TestCase
         $resAlert = telegram_alert('Test Title', 'Test alert message', 'warning');
         $this->assertTrue($resAlert['ok']);
     }
+
+    public function testWebhookSecretAndEscapedAlerts(): void
+    {
+        $GLOBALS['config']['telegram']['webhook_secret'] = 'tg_secret_1';
+        try {
+            $tg = new \Bongo\Packages\Telegram\Telegram(['bot_token' => 'x', 'chat_id' => '1']);
+            $this->assertTrue($tg->verifyWebhook(['X-Telegram-Bot-Api-Secret-Token' => 'tg_secret_1']));
+            $this->assertFalse($tg->verifyWebhook(['X-Telegram-Bot-Api-Secret-Token' => 'guess']));
+            $this->assertFalse($tg->verifyWebhook([]));
+        } finally {
+            unset($GLOBALS['config']['telegram']['webhook_secret']);
+        }
+
+        $tg = new class (['bot_token' => 'x', 'chat_id' => '1']) extends \Bongo\Packages\Telegram\Telegram {
+            public array $calls = [];
+
+            protected function request(string $method, array $params = []): array
+            {
+                $this->calls[] = $params;
+                return ['ok' => true];
+            }
+        };
+        $tg->alert('Error in <Order> & co', 'boom');
+        $text = (string) ($tg->calls[0]['text'] ?? '');
+        $this->assertTrue(str_contains($text, '&lt;Order&gt;'), 'the title is escaped for parse_mode HTML');
+    }
 }

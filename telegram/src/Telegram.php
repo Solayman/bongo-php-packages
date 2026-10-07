@@ -72,8 +72,10 @@ class Telegram
         $appEnv = function_exists('env') ? env('APP_ENV', 'production') : 'production';
         $time = date('Y-m-d H:i:s T');
 
-        $html = "{$emoji} <b>[" . strtoupper($level) . "] {$title}</b>\n";
-        $html .= "<b>App:</b> {$appName} (<code>{$appEnv}</code>)\n";
+        // Every value is escaped: one stray "<" makes Telegram reject the whole message (lost alert)
+        $e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        $html = "{$emoji} <b>[" . $e(strtoupper($level)) . '] ' . $e($title) . "</b>\n";
+        $html .= '<b>App:</b> ' . $e($appName) . ' (<code>' . $e($appEnv) . "</code>)\n";
         $html .= "<b>Time:</b> {$time}\n\n";
         $html .= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . "\n";
 
@@ -117,7 +119,32 @@ class Telegram
      */
     public function setWebhook(string $url): array
     {
-        return $this->request('setWebhook', ['url' => $url]);
+        // Telegram then sends X-Telegram-Bot-Api-Secret-Token with every update: check it with verifyWebhook()
+        $params = ['url' => $url];
+        $secret = (string) (function_exists('config') ? config('telegram.webhook_secret', '') : '');
+        if ($secret !== '') {
+            $params['secret_token'] = $secret;
+        }
+        return $this->request('setWebhook', $params);
+    }
+
+    /**
+     * True when an incoming update carries the secret given to setWebhook() (TELEGRAM_WEBHOOK_SECRET).
+     * Without it anyone who learns the webhook URL can post fake updates.
+     */
+    public function verifyWebhook(array $headers = []): bool
+    {
+        $secret = (string) (function_exists('config') ? config('telegram.webhook_secret', '') : '');
+        if ($secret === '') {
+            return false;
+        }
+        $given = (string) ($_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '');
+        foreach ($headers as $name => $value) {
+            if (strtolower((string) $name) === 'x-telegram-bot-api-secret-token') {
+                $given = is_array($value) ? (string) reset($value) : (string) $value;
+            }
+        }
+        return $given !== '' && hash_equals($secret, $given);
     }
 
     /**
