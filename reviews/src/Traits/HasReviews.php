@@ -81,15 +81,9 @@ trait HasReviews
      */
     public function averageRating(bool $approvedOnly = true): float
     {
+        // AVG() in the database instead of loading every review
         $query = $approvedOnly ? $this->approvedReviews() : $this->reviews();
-        $reviews = $query->get();
-
-        if (empty($reviews)) {
-            return 0.0;
-        }
-
-        $total = array_sum(array_map(fn($r) => (int) $r->rating, $reviews));
-        return round($total / count($reviews), 1);
+        return round((float) ($query->avg('rating') ?? 0.0), 1);
     }
 
     /**
@@ -116,13 +110,14 @@ trait HasReviews
             $dist[$i] = 0;
         }
 
+        // One GROUP BY query instead of loading every review
         $query = $approvedOnly ? $this->approvedReviews() : $this->reviews();
-        $reviews = $query->get();
+        $rows = $query->select('rating', 'COUNT(*) AS n')->groupBy('rating')->get();
 
-        foreach ($reviews as $rev) {
-            $r = (int) $rev->rating;
+        foreach ($rows as $row) {
+            $r = (int) $row->rating;
             if (isset($dist[$r])) {
-                $dist[$r]++;
+                $dist[$r] += (int) $row->n;
             }
         }
 
