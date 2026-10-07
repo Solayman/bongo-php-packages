@@ -250,4 +250,25 @@ class ReviewsTest extends TestCase
         $this->assertTrue((new \Bongo\Packages\Reviews\Models\Review())->votes() instanceof \System\Database\HasMany, 'votes() returns a core HasMany');
         $this->assertTrue((new \Bongo\Packages\Reviews\Models\ReviewVote())->review() instanceof \System\Database\BelongsTo, 'review() returns a core BelongsTo');
     }
+
+    public function testVotesNeedAVoterAndCountersStayExact(): void
+    {
+        $product = TestReviewProduct::create(['name' => 'Lamp', 'price' => 10]);
+        $user = TestReviewUser::create(['name' => 'Karim', 'email' => 'karim@example.com']);
+        $review = $product->addReview(user: $user, rating: 4, title: 'Good', content: 'Bright');
+
+        $this->assertFalse($review->vote(null, true, null), 'no user and no IP: no vote');
+        $this->assertTrue($review->vote(1, true));
+        $this->assertFalse($review->vote(1, true), 'same vote twice counts once');
+        $this->assertTrue($review->vote(2, true));
+        $this->assertTrue($review->vote(1, false), 'changing a vote moves it');
+        $this->assertSame(1, (int) $review->helpful_count);
+        $this->assertSame(1, (int) $review->unhelpful_count);
+
+        $product->addReview(user: $user, rating: 2, title: 'Meh', content: 'Dim');
+        \System\Database\DB::table('reviews')->update(['status' => 'approved'], true);
+        $this->assertSame(3.0, $product->averageRating());
+        $this->assertSame(1, $product->ratingDistribution()[4]);
+        $this->assertSame(1, $product->ratingDistribution()[2]);
+    }
 }

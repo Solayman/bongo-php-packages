@@ -87,31 +87,30 @@ class Review extends Model
     public function vote(int|string|null $userId = null, bool $helpful = true, ?string $ip = null): bool
     {
         $userId = $userId !== null ? (int) $userId : null;
+        if ($userId === null && ($ip === null || $ip === '')) {
+            return false;   // a vote needs a voter: a user id or an IP address
+        }
 
         // Check if already voted
         $query = ReviewVote::query()->where('review_id', $this->id);
         if ($userId !== null) {
             $query->where('user_id', $userId);
-        } elseif ($ip !== null) {
+        } else {
             $query->where('ip_address', $ip);
         }
 
         $existing = $query->first();
         if ($existing) {
-            if ($existing->is_helpful === $helpful) {
+            if ((bool) $existing->is_helpful === $helpful) {
                 return false; // Already voted identically
-            }
-            // Swap vote
-            if ($helpful) {
-                $this->helpful_count++;
-                $this->unhelpful_count = max(0, $this->unhelpful_count - 1);
-            } else {
-                $this->unhelpful_count++;
-                $this->helpful_count = max(0, $this->helpful_count - 1);
             }
             $existing->is_helpful = $helpful;
             $existing->save();
-            $this->save();
+            // Move one vote from the other counter, atomically (no lost updates under parallel votes)
+            [$up, $down] = $helpful ? ['helpful_count', 'unhelpful_count'] : ['unhelpful_count', 'helpful_count'];
+            static::query()->where('id', $this->id)->increment($up);
+            static::query()->where('id', $this->id)->where($down, '>', 0)->decrement($down);
+            $this->refreshCounts();
             return true;
         }
 
@@ -123,14 +122,20 @@ class Review extends Model
             'is_helpful' => $helpful,
         ]);
 
-        if ($helpful) {
-            $this->helpful_count++;
-        } else {
-            $this->unhelpful_count++;
-        }
-        $this->save();
+        static::query()->where('id', $this->id)->increment($helpful ? 'helpful_count' : 'unhelpful_count');
+        $this->refreshCounts();
 
         return true;
+    }
+
+    /** Reload the vote counters after an atomic update */
+    protected function refreshCounts(): void
+    {
+        $row = static::query()->where('id', $this->id)->first();
+        if ($row) {
+            $this->helpful_count = (int) $row->helpful_count;
+            $this->unhelpful_count = (int) $row->unhelpful_count;
+        }
     }
 
     /**
