@@ -26,6 +26,12 @@ return [
     */
     'quality' => (int) env('IMAGE_QUALITY', 85),
 
+    // Largest image that will be decoded (width x height). Decoding needs ~4-5 bytes per pixel.
+    'max_pixels' => (int) env('IMAGE_MAX_PIXELS', 50000000),
+
+    // Largest file fetched by Image::read('https://...') (bytes)
+    'max_download_bytes' => (int) env('IMAGE_MAX_DOWNLOAD_BYTES', 10485760),
+
     /*
     |--------------------------------------------------------------------------
     | Watermark Defaults

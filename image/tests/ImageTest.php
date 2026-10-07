@@ -333,5 +333,19 @@ class ImageTest extends TestCase
         $this->assertArrayHasKey('content', $resp);
         $this->assertSame('image/png', $resp['headers']['Content-Type']);
     }
-}
 
+    public function testDecompressionBombIsRefusedBeforeDecoding(): void
+    {
+        // A few bytes of PNG header claiming 30000 x 30000 pixels (would need ~4 GB to decode)
+        $ihdr = 'IHDR' . pack('NN', 30000, 30000) . "\x08\x02\x00\x00\x00";
+        $png = "\x89PNG\r\n\x1a\n" . pack('N', 13) . $ihdr . pack('N', crc32($ihdr));
+        $this->assertThrows(\Bongo\Packages\Image\Exceptions\ImageException::class, fn() => \Bongo\Packages\Image\Image::fromBinary($png));
+    }
+
+    public function testInternalUrlsAreNotFetched(): void
+    {
+        foreach (['http://127.0.0.1/a.png', 'http://169.254.169.254/latest/meta-data', 'http://10.1.2.3/x.png', 'ftp://example.com/a.png'] as $url) {
+            $this->assertThrows(\Bongo\Packages\Image\Exceptions\ImageException::class, fn() => \Bongo\Packages\Image\Image::read($url), $url);
+        }
+    }
+}
