@@ -83,27 +83,22 @@ class GeoIP
         );
     }
 
+    /**
+     * The visitor's IP. Forwarding headers (X-Forwarded-For, CF-Connecting-IP...) are trusted only from
+     * the proxies configured in the core (Request::ip() and its trusted proxy list); otherwise any
+     * visitor could claim to be in another country.
+     */
     public static function resolveClientIp(): string
     {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR',
-        ];
-
-        foreach ($headers as $h) {
-            if (!empty($_SERVER[$h])) {
-                $raw = (string) $_SERVER[$h];
-                $parts = explode(',', $raw);
-                $clean = trim($parts[0]);
-                if (filter_var($clean, FILTER_VALIDATE_IP)) {
-                    return $clean;
-                }
+        if (class_exists(\System\Http\Request::class)) {
+            $ip = (string) \System\Http\Request::ip();
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
             }
         }
 
-        return '127.0.0.1';
+        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        return filter_var($remote, FILTER_VALIDATE_IP) ? $remote : '127.0.0.1';
     }
 
     public static function fake(array $mockLocations = []): void
