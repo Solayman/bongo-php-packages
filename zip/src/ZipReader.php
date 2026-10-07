@@ -59,6 +59,14 @@ class ZipReader
 
         $filter = $entries !== null ? (is_array($entries) ? $entries : [$entries]) : null;
 
+        // Zip bomb limits: a small archive can expand to fill the disk. Counted on the bytes actually
+        // written (the sizes declared inside an archive can lie).
+        $maxEntries = (int) (function_exists('config') ? config('zip.max_entries', 10000) : 10000);
+        $remaining = (int) (function_exists('config') ? config('zip.max_extract_bytes', 1073741824) : 1073741824);
+        if ($maxEntries > 0 && $this->zip->numFiles > $maxEntries) {
+            throw new ZipException("The archive has {$this->zip->numFiles} entries; the limit is {$maxEntries}.");
+        }
+
         for ($i = 0; $i < $this->zip->numFiles; $i++) {
             $stat = $this->zip->statIndex($i);
             if (!$stat) {
@@ -104,9 +112,16 @@ class ZipReader
                     throw new ZipException("Failed to write extracted file: {$targetPath}");
                 }
 
-                stream_copy_to_stream($stream, $out);
+                $written = stream_copy_to_stream($stream, $out, $remaining > 0 ? $remaining + 1 : null);
                 fclose($stream);
                 fclose($out);
+                if ($remaining > 0) {
+                    $remaining -= (int) $written;
+                    if ($remaining < 0) {
+                        @unlink($targetPath);
+                        throw new ZipException('The archive expands beyond the extraction limit (zip.max_extract_bytes).');
+                    }
+                }
             }
         }
 

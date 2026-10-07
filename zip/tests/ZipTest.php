@@ -166,4 +166,27 @@ class ZipTest extends TestCase
 
         @rmdir($dir);
     }
+
+    public function testZipBombIsStoppedAtTheLimit(): void
+    {
+        $dir = sys_get_temp_dir() . '/bongo_zipbomb_' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        $archive = $dir . '/bomb.zip';
+        $zip = new \ZipArchive();
+        $zip->open($archive, \ZipArchive::CREATE);
+        $zip->addFromString('zeros.bin', str_repeat("\0", 3 * 1024 * 1024));   // compresses to a few KB
+        $zip->close();
+
+        $GLOBALS['config']['zip']['max_extract_bytes'] = 1024 * 1024;
+        try {
+            $this->assertThrows(\Bongo\Packages\Zip\Exceptions\ZipException::class, fn() => \Bongo\Packages\Zip\Zip::extract($archive, $dir . '/out'));
+            $this->assertFalse(is_file($dir . '/out/zeros.bin'), 'the partial file is removed');
+        } finally {
+            unset($GLOBALS['config']['zip']['max_extract_bytes']);
+            @unlink($dir . '/out/zeros.bin');
+            @rmdir($dir . '/out');
+            @unlink($archive);
+            @rmdir($dir);
+        }
+    }
 }

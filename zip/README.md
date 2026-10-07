@@ -98,3 +98,7 @@ Run package test suite:
 ```bash
 php run_tests.php zip
 ```
+
+## Extraction limits (zip bombs)
+
+`Zip::extract()` refuses archives with more than `ZIP_MAX_ENTRIES` entries (default 10,000) and stops when the extracted bytes exceed `ZIP_MAX_EXTRACT_BYTES` (default 1 GB). The limit counts bytes actually written, not the sizes declared inside the archive, and a partly written file is removed. Path traversal (`../`, absolute paths) is refused as before. Never extract uploaded archives into `public/`: they may contain `.php` files.
