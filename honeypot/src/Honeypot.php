@@ -191,6 +191,15 @@ HTML;
 
     protected function secretKey(): string
     {
+        // A key derived for this purpose only (not the raw APP_KEY shared with passwords and encryption)
+        if (class_exists(\System\Security\Key::class)) {
+            try {
+                return \System\Security\Key::derive('honeypot');
+            } catch (\Throwable $e) {
+                // no APP_KEY: fall through
+            }
+        }
+
         if (function_exists('config') && config('app.key')) {
             return (string) config('app.key');
         }
