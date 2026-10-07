@@ -182,7 +182,22 @@ class Newsletter
     }
 
     /**
+     * Unsubscribe from a public link: accepts only the 64-character token from unsubscribeUrl(),
+     * never an email address, so the link handler cannot be used to unsubscribe other people.
+     */
+    public function unsubscribeByToken(string $token): bool
+    {
+        $token = trim($token);
+        if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+            return false;
+        }
+        return $this->unsubscribe($token);
+    }
+
+    /**
      * Unsubscribe an email using unsubscribe token or email address.
+     * Accepts an email: call it only from trusted code (admin, the user's own account page);
+     * for links in emails use unsubscribeByToken().
      */
     public function unsubscribe(string $tokenOrEmail): bool
     {
