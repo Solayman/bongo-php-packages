@@ -162,6 +162,8 @@ class S3Client
      */
     public function generatePresignedUrl(string $key, int $expiresInSeconds = 3600, string $method = 'GET'): string
     {
+        // Signature V4 allows 1 second to 7 days; S3 rejects other values
+        $expiresInSeconds = max(1, min(604800, $expiresInSeconds));
         $cleanKey = ltrim($key, '/');
         $hostInfo = $this->resolveHostAndPath($cleanKey);
         $scheme = $hostInfo['scheme'];

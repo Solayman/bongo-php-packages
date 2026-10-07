@@ -199,4 +199,11 @@ XML;
         // Clean up temp file
         @unlink($response->path);
     }
+
+    public function testPresignedUrlExpiryStaysWithinTheSigV4Limit(): void
+    {
+        $client = new \Bongo\Packages\S3\S3Client(['key' => 'AKIAEXAMPLE', 'secret' => 'secret', 'region' => 'us-east-1', 'bucket' => 'bucket']);
+        $this->assertContains('X-Amz-Expires=604800', $client->generatePresignedUrl('a.txt', 86400 * 30));
+        $this->assertContains('X-Amz-Expires=1', $client->generatePresignedUrl('a.txt', -5));
+    }
 }
