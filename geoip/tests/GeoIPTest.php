@@ -104,15 +104,20 @@ class GeoIPTest extends TestCase
 
     public function testClientIpResolutionFromProxyHeaders(): void
     {
+        $_SERVER['REMOTE_ADDR'] = '203.0.113.7';
         $_SERVER['HTTP_CF_CONNECTING_IP'] = '103.230.104.22';
-        $ip = GeoIP::resolveClientIp();
-        $this->assertEquals('103.230.104.22', $ip);
-        unset($_SERVER['HTTP_CF_CONNECTING_IP']);
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.1';
+        try {
+            // A visitor cannot pick their country by sending forwarding headers
+            $this->assertEquals('203.0.113.7', GeoIP::resolveClientIp());
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.1, 10.0.0.1';
-        $ip2 = GeoIP::resolveClientIp();
-        $this->assertEquals('198.51.100.1', $ip2);
-        unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+            // Behind a trusted proxy the forwarded client address is used
+            $GLOBALS['config']['security']['trusted_proxies'] = ['203.0.113.7'];
+            $this->assertEquals('198.51.100.1', GeoIP::resolveClientIp());
+        } finally {
+            unset($_SERVER['HTTP_CF_CONNECTING_IP'], $_SERVER['HTTP_X_FORWARDED_FOR'], $GLOBALS['config']['security']['trusted_proxies']);
+            $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+        }
     }
 
     public function testGlobalHelper(): void
