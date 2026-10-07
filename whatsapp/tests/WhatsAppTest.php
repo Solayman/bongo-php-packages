@@ -94,11 +94,11 @@ class WhatsAppTest extends TestCase
         $validQuery = [
             'hub_mode'         => 'subscribe',
             'hub_verify_token' => 'my_secret_token',
-            'hub_challenge'    => 'CHALLENGE_STRING_123',
+            'hub_challenge'    => '1158201444',
         ];
 
         $challenge = $wa->verifyWebhook($validQuery, 'my_secret_token');
-        $this->assertEquals('CHALLENGE_STRING_123', $challenge);
+        $this->assertEquals('1158201444', $challenge);
 
         $invalidQuery = [
             'hub_mode'         => 'subscribe',
@@ -127,5 +127,12 @@ class WhatsAppTest extends TestCase
     {
         $client = whatsapp('helper-token', '999');
         $this->assertTrue($client instanceof WhatsApp);
+    }
+
+    public function testChallengeCannotCarryScriptAndEmptyTokenNeverMatches(): void
+    {
+        $wa = new WhatsApp('test-token', '123456789');
+        $this->assertNull($wa->verifyWebhook(['hub_mode' => 'subscribe', 'hub_verify_token' => 'tok', 'hub_challenge' => '<script>alert(1)</script>'], 'tok'), 'only numeric challenges are echoed');
+        $this->assertNull($wa->verifyWebhook(['hub_mode' => 'subscribe', 'hub_verify_token' => '', 'hub_challenge' => '123'], ''), 'an unset verify token never matches');
     }
 }

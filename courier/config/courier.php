@@ -33,4 +33,7 @@ return [
         'password'      => env('PATHAO_PASSWORD', ''),
         'store_id'      => env('PATHAO_STORE_ID', ''),
     ],
+
+    // Shared secret the courier sends with webhooks (Authorization: Bearer ... or X-Pathao-Signature)
+    'webhook_secret' => env('COURIER_WEBHOOK_SECRET', ''),
 ];

@@ -38,4 +38,7 @@ return [
         'waiting_room'      => true,
         'auto_recording'    => 'none', // 'local' | 'cloud' | 'none'
     ],
+
+    // Webhook timestamps older/newer than this many seconds are refused (replay protection)
+    'webhook_tolerance' => (int) env('ZOOM_WEBHOOK_TOLERANCE', 300),
 ];

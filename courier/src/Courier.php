@@ -97,10 +97,41 @@ class Courier
     }
 
     /**
-     * Parse and normalize inbound webhook events from courier partners.
+     * The webhook request carries the shared secret set in courier.webhook_secret
+     * (COURIER_WEBHOOK_SECRET; set the same value in the courier's dashboard). Accepted as
+     * "Authorization: Bearer <secret>" or "X-Pathao-Signature: <secret>". False when no secret is set.
      */
-    public function handleWebhook(array $payload): array
+    public function verifyWebhook(array $headers): bool
     {
+        $secret = (string) (function_exists('config') ? config('courier.webhook_secret', '') : '');
+        if ($secret === '') {
+            return false;
+        }
+        $normalized = [];
+        foreach ($headers as $name => $value) {
+            $normalized[strtolower((string) $name)] = is_array($value) ? (string) reset($value) : (string) $value;
+        }
+        $given = $normalized['x-pathao-signature'] ?? '';
+        $authorization = $normalized['authorization'] ?? '';
+        if ($given === '' && str_starts_with($authorization, 'Bearer ')) {
+            $given = substr($authorization, 7);
+        }
+        return $given !== '' && hash_equals($secret, $given);
+    }
+
+    /**
+     * Parse and normalize inbound webhook events from courier partners.
+     * Pass the request headers: with courier.webhook_secret set, an unverified call throws, so a
+     * forged "delivered" update can never be processed. Check 'verified' when no secret is set.
+     */
+    public function handleWebhook(array $payload, array $headers = []): array
+    {
+        $verified = $this->verifyWebhook($headers);
+        $hasSecret = (string) (function_exists('config') ? config('courier.webhook_secret', '') : '') !== '';
+        if ($hasSecret && !$verified) {
+            throw new \RuntimeException('Courier webhook rejected: missing or wrong webhook secret.');
+        }
+
         if ($this->driver === 'steadfast') {
             return [
                 'driver'         => 'steadfast',
@@ -108,6 +139,7 @@ class Courier
                 'invoice'        => $payload['invoice'] ?? null,
                 'status'         => strtolower($payload['status'] ?? 'unknown'),
                 'updated_at'     => $payload['updated_at'] ?? gmdate('Y-m-d H:i:s'),
+                'verified'       => $verified,
                 'raw'            => $payload,
             ];
         }
@@ -117,6 +149,7 @@ class Courier
             'consignment_id' => $payload['consignment_id'] ?? null,
             'status'         => strtolower($payload['order_status'] ?? 'unknown'),
             'updated_at'     => gmdate('Y-m-d H:i:s'),
+            'verified'       => $verified,
             'raw'            => $payload,
         ];
     }

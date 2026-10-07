@@ -232,6 +232,13 @@ class Zoom
             return false;
         }
 
+        // Zoom sends the time in milliseconds; refuse requests older/newer than 5 minutes (replays)
+        $seconds = strlen($timestamp) > 10 ? intdiv((int) $timestamp, 1000) : (int) $timestamp;
+        $tolerance = (int) (function_exists('config') ? config('zoom.webhook_tolerance', 300) : 300);
+        if ($tolerance > 0 && abs(time() - $seconds) > $tolerance) {
+            return false;
+        }
+
         $message = "v0:{$timestamp}:{$payload}";
         $expected = 'v0=' . hash_hmac('sha256', $message, $token);
 
@@ -253,8 +260,11 @@ class Zoom
             return null;
         }
 
-        $token = $secretToken ?? config('zoom.secret_token', '');
-        $encryptedToken = hash_hmac('sha256', $plainToken, $token);
+        $token = (string) ($secretToken ?? config('zoom.secret_token', ''));
+        if ($token === '') {
+            return null;   // without a secret token the endpoint cannot be validated
+        }
+        $encryptedToken = hash_hmac('sha256', (string) $plainToken, $token);
 
         return [
             'plainToken'     => $plainToken,

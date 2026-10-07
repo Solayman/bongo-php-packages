@@ -195,8 +195,13 @@ class WhatsApp
         $receivedToken = $queryParams['hub_verify_token'] ?? $queryParams['hub.verify_token'] ?? null;
         $challenge = $queryParams['hub_challenge'] ?? $queryParams['hub.challenge'] ?? null;
 
-        if ($mode === 'subscribe' && $receivedToken === $token && $challenge !== null) {
-            return (string) $challenge;
+        // An unset verify token never matches, and the challenge is echoed only when it is a number
+        // (Meta sends digits); anything else returned as a page would be reflected XSS
+        if (
+            $mode === 'subscribe' && $token !== '' && is_string($receivedToken)
+            && hash_equals($token, $receivedToken) && is_string($challenge) && ctype_digit($challenge)
+        ) {
+            return $challenge;
         }
 
         return null;
