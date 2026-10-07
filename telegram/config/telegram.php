@@ -52,4 +52,7 @@ return [
     |
     */
     'timeout' => 15,
+
+    // Secret Telegram sends back in X-Telegram-Bot-Api-Secret-Token (1-256 chars: A-Z a-z 0-9 _ -)
+    'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET', ''),
 ];
