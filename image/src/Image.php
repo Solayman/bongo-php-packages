@@ -74,6 +74,7 @@ class Image
         if ($info === false) {
             throw new ImageException("Unable to read image dimensions or unsupported format: {$path}");
         }
+        static::assertSize((int) $info[0], (int) $info[1]);
 
         $mime = $info['mime'] ?? 'image/jpeg';
         $type = $info[2] ?? 0;
@@ -104,6 +105,12 @@ class Image
     {
         if ($data === '') {
             throw new ImageException("Cannot load image from empty binary string.");
+        }
+
+        // Check the declared size before decoding: a tiny file can claim gigapixels (decompression bomb)
+        $info = @getimagesizefromstring($data);
+        if ($info !== false) {
+            static::assertSize((int) $info[0], (int) $info[1]);
         }
 
         $im = @imagecreatefromstring($data);
@@ -170,6 +177,12 @@ class Image
                 return $img;
             }
 
+            // Anything with a scheme (http://, ftp://, phar://...) is a URL, never a local path:
+            // file_exists() on such a string would already open a network or archive stream
+            if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $source)) {
+                return static::fromBinary(static::download($source));
+            }
+
             // Check if file exists on disk
             if (file_exists($source) && is_file($source)) {
                 return static::load($source);
@@ -188,11 +201,7 @@ class Image
 
             // Check URL
             if (filter_var($source, FILTER_VALIDATE_URL)) {
-                $data = @file_get_contents($source);
-                if ($data === false) {
-                    throw new ImageException("Failed to fetch image from URL: {$source}");
-                }
-                return static::fromBinary($data);
+                return static::fromBinary(static::download($source));
             }
 
             // Fallback: try fromBinary or throw
@@ -204,6 +213,53 @@ class Image
         }
 
         throw new ImageException("Invalid image source type: " . get_debug_type($source));
+    }
+
+    /**
+     * Refuse images larger than image.max_pixels (default 50 megapixels): decoding needs about
+     * 4-5 bytes per pixel, so a 30000 x 30000 image would need gigabytes of memory.
+     */
+    protected static function assertSize(int $width, int $height): void
+    {
+        $max = (int) (function_exists('config') ? config('image.max_pixels', 50_000_000) : 50_000_000);
+        if ($width <= 0 || $height <= 0 || ($max > 0 && $width * $height > $max)) {
+            throw new ImageException("Image is too large ({$width} x {$height} pixels; the limit is {$max}).");
+        }
+    }
+
+    /**
+     * Fetch an image URL: http(s) only, public addresses only (no 127.0.0.1, 10.x, 169.254.169.254...),
+     * at most image.max_download_bytes (default 10 MB). A URL taken from a form cannot reach internal services.
+     */
+    protected static function download(string $url): string
+    {
+        $parts = parse_url($url);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = trim((string) ($parts['host'] ?? ''), '[]');
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+            throw new ImageException('Only http(s) image URLs can be fetched.');
+        }
+
+        $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : array_filter([gethostbyname($host)], fn($ip) => $ip !== $host);
+        if ($ips === []) {
+            throw new ImageException("Image host [{$host}] could not be resolved.");
+        }
+        foreach ($ips as $ip) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new ImageException("Image host [{$host}] points to a private or reserved address.");
+            }
+        }
+
+        $max = (int) (function_exists('config') ? config('image.max_download_bytes', 10_485_760) : 10_485_760);
+        $context = stream_context_create(['http' => ['timeout' => 15, 'follow_location' => 0]]);
+        $data = @file_get_contents($url, false, $context, 0, $max + 1);
+        if ($data === false) {
+            throw new ImageException("Failed to fetch image from URL: {$url}");
+        }
+        if (strlen($data) > $max) {
+            throw new ImageException("Image at [{$url}] is larger than {$max} bytes.");
+        }
+        return $data;
     }
 
     /**

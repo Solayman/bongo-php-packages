@@ -158,3 +158,8 @@ Run package test suite:
 ```bash
 php run_tests.php image
 ```
+
+## Safety limits
+
+- Images larger than `IMAGE_MAX_PIXELS` (default 50,000,000 pixels) are refused **before** decoding, so a tiny file that claims huge dimensions (a decompression bomb) cannot exhaust memory.
+- `Image::read('https://...')` fetches only `http(s)` URLs on public addresses (never `127.0.0.1`, `10.x`, `169.254.169.254`...), without following redirects, up to `IMAGE_MAX_DOWNLOAD_BYTES` (default 10 MB). Strings with any other scheme (`ftp://`, `phar://`...) are refused and never touched as files.
