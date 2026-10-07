@@ -134,4 +134,17 @@ class ZoomTest extends TestCase
         $code = $cmd->handle(['CLI Standup'], ['duration' => '30']);
         $this->assertSame(0, $code);
     }
+
+    public function testOldWebhookTimestampsAreRefused(): void
+    {
+        $zoom = new \Bongo\Packages\Zoom\Zoom();
+        $secret = 'zoom_secret';
+        $payload = '{"event":"meeting.started"}';
+        $old = (string) ((time() - 3600) * 1000);   // an hour ago, in milliseconds like Zoom
+        $signature = 'v0=' . hash_hmac('sha256', "v0:{$old}:{$payload}", $secret);
+        $this->assertFalse($zoom->verifyWebhook($payload, $old, $signature, $secret), 'a captured request cannot be replayed later');
+
+        $now = (string) (time() * 1000);
+        $this->assertTrue($zoom->verifyWebhook($payload, $now, 'v0=' . hash_hmac('sha256', "v0:{$now}:{$payload}", $secret), $secret));
+    }
 }

@@ -115,4 +115,22 @@ class CourierTest extends TestCase
         $code = $cmd->handle(['SF998877'], ['driver' => 'steadfast']);
         $this->assertSame(0, $code);
     }
+
+    public function testWebhooksNeedTheSharedSecret(): void
+    {
+        $courier = new \Bongo\Packages\Courier\Courier();
+        $payload = ['consignment_id' => '123', 'status' => 'delivered'];
+
+        $this->assertFalse($courier->handleWebhook($payload)['verified'], 'no secret configured: never verified');
+
+        $GLOBALS['config']['courier']['webhook_secret'] = 'courier-secret';
+        try {
+            $this->assertThrows(\RuntimeException::class, fn() => $courier->handleWebhook($payload, ['Authorization' => 'Bearer wrong']));
+            $this->assertThrows(\RuntimeException::class, fn() => $courier->handleWebhook($payload));
+            $this->assertTrue($courier->handleWebhook($payload, ['Authorization' => 'Bearer courier-secret'])['verified']);
+            $this->assertTrue($courier->handleWebhook($payload, ['X-Pathao-Signature' => 'courier-secret'])['verified']);
+        } finally {
+            unset($GLOBALS['config']['courier']['webhook_secret']);
+        }
+    }
 }
