@@ -140,4 +140,21 @@ class SluggableTest extends TestCase
         $slug3 = Slugger::slugify('Fast Performance & Memoization');
         $this->assertSame($slug1, $slug3);
     }
+
+    public function testManyDuplicatesCostOneQuery(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $p = new TestPost(['title' => 'Popular Phone Case']);
+            $p->generateSlug();
+            $p->save();
+        }
+        $next = new TestPost(['title' => 'Popular Phone Case']);
+        \System\Database\DB::enableQueryLog();
+        $next->generateSlug();
+        $queries = count(\System\Database\DB::getQueryLog());
+        \System\Database\DB::disableQueryLog();
+
+        $this->assertSame('popular-phone-case-5', $next->slug);
+        $this->assertSame(1, $queries, 'one query finds the free slug');
+    }
 }

@@ -67,15 +67,17 @@ trait HasSlug
 
             $reserved = function_exists('config') ? (array) config('sluggable.reserved', []) : [];
 
-            // Existence checker in database
-            $existsChecker = function (string $testSlug) use ($slugField): bool {
-                $query = static::where($slugField, $testSlug);
-                $id = $this->id ?? null;
-                if ($id !== null) {
-                    $query->where('id', '!=', $id);
-                }
-                return $query->exists();
-            };
+            // One query for every taken "base" / "base-N" slug, then pick the first free one in memory
+            // (instead of one EXISTS query per candidate: the 50th "iPhone case" used to cost 50 queries)
+            $query = static::query()->where(function ($q) use ($slugField, $baseSlug, $separator) {
+                $q->where($slugField, $baseSlug)->orWhere($slugField, 'LIKE', $baseSlug . $separator . '%');
+            });
+            $id = $this->id ?? null;
+            if ($id !== null) {
+                $query->where('id', '!=', $id);
+            }
+            $taken = array_flip(array_map('strval', $query->pluck($slugField)));
+            $existsChecker = fn(string $testSlug): bool => isset($taken[$testSlug]);
 
             $uniqueSlug = Slugger::makeUnique($baseSlug, $existsChecker, $separator, $reserved);
             $this->{$slugField} = $uniqueSlug;
