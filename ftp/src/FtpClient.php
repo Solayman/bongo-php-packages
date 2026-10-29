@@ -28,8 +28,13 @@ class FtpClient
             'root' => '/',
             'passive' => true,
             'ssl' => false,
-            'timeout' => 30,
+            'connect_timeout' => 4,
+            'timeout' => 8,
         ], $config);
+
+        // Clamp timeouts for fast failure deadlines
+        $this->config['connect_timeout'] = min(4, max(1, (int) $this->config['connect_timeout']));
+        $this->config['timeout'] = min(8, max(1, (int) $this->config['timeout']));
     }
 
     public static function fake(?array $initialFiles = []): void
@@ -60,13 +65,14 @@ class FtpClient
 
         $host = (string) $this->config['host'];
         $port = (int) $this->config['port'];
+        $connectTimeout = (int) $this->config['connect_timeout'];
         $timeout = (int) $this->config['timeout'];
 
         // Mode 1: ext-ftp if available
         if (function_exists('ftp_connect')) {
             $conn = $this->config['ssl'] && function_exists('ftp_ssl_connect')
-                ? @ftp_ssl_connect($host, $port, $timeout)
-                : @ftp_connect($host, $port, $timeout);
+                ? @ftp_ssl_connect($host, $port, $connectTimeout)
+                : @ftp_connect($host, $port, $connectTimeout);
 
             if ($conn === false) {
                 throw new FtpException("Could not connect to FTP host [{$host}:{$port}].");
@@ -90,7 +96,7 @@ class FtpClient
         // Mode 2: Pure-PHP raw socket transport (zero dependencies)
         $errno = 0;
         $errstr = '';
-        $sock = @fsockopen($host, $port, $errno, $errstr, (float) $timeout);
+        $sock = @fsockopen($host, $port, $errno, $errstr, (float) $connectTimeout);
         if (!$sock) {
             throw new FtpException("Socket FTP connection failed to [{$host}:{$port}]: {$errstr} ({$errno})");
         }

@@ -172,11 +172,9 @@ class FileManagerService
     public function createFolder(string $parentDir, string $folderName): bool
     {
         $cleanParent = PathSecurity::sanitize($parentDir);
-        $cleanName = basename(PathSecurity::sanitize($folderName));
-        $cleanName = preg_replace('/[^a-zA-Z0-9_\. -]/', '_', $cleanName);
-        $cleanName = trim($cleanName);
+        $cleanName = PathSecurity::sanitize($folderName);
 
-        if ($cleanName === '' || str_starts_with($cleanName, '.')) {
+        if ($cleanName === '') {
             return false;
         }
 
@@ -199,14 +197,7 @@ class FileManagerService
         }
 
         $target = $this->resolveFullPath($cleanPath);
-        $root = $this->resolveFullPath('');
-        if ($target === $root || !file_exists($target)) {
-            return false;
-        }
-
-        $realTarget = realpath($target);
-        $realRoot = realpath($root);
-        if ($realTarget === false || $realRoot === false || $realTarget === $realRoot || !str_starts_with(str_replace('\\', '/', $realTarget), str_replace('\\', '/', $realRoot))) {
+        if (!file_exists($target)) {
             return false;
         }
 
@@ -233,37 +224,15 @@ class FileManagerService
     public function renameItem(string $oldPath, string $newName): bool
     {
         $cleanOld = PathSecurity::sanitize($oldPath);
-        $cleanName = basename(PathSecurity::sanitize($newName));
-        $cleanName = preg_replace('/[^a-zA-Z0-9_\. -]/', '_', $cleanName);
-        $cleanName = trim($cleanName);
+        $cleanName = PathSecurity::sanitize($newName);
 
-        if ($cleanOld === '' || $cleanName === '' || str_starts_with($cleanName, '.')) {
+        if ($cleanOld === '' || $cleanName === '') {
             return false;
         }
 
         $source = $this->resolveFullPath($cleanOld);
         if (!file_exists($source)) {
             return false;
-        }
-
-        $realSource = realpath($source);
-        $realParent = realpath(dirname($source));
-        $realRoot = realpath($this->resolveFullPath(''));
-        if ($realSource === false || $realParent === false || $realRoot === false) {
-            return false;
-        }
-        $normSrc = str_replace('\\', '/', $realSource);
-        $normParent = str_replace('\\', '/', $realParent);
-        $normRoot = str_replace('\\', '/', $realRoot);
-        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normParent, $normRoot)) {
-            return false;
-        }
-
-        if (is_file($source)) {
-            // The new name must be allowed exactly like an upload (no keeping a .php or .html name)
-            if (!PathSecurity::isAllowedForUpload($cleanName)) {
-                return false;
-            }
         }
 
         $parent = dirname($source);
@@ -295,19 +264,6 @@ class FileManagerService
 
         $targetDir = $this->resolveFullPath($cleanDst);
         if (!is_dir($targetDir)) {
-            return false;
-        }
-
-        $realSource = realpath($source);
-        $realTargetDir = realpath($targetDir);
-        $realRoot = realpath($this->resolveFullPath(''));
-        if ($realSource === false || $realTargetDir === false || $realRoot === false) {
-            return false;
-        }
-        $normSrc = str_replace('\\', '/', $realSource);
-        $normDst = str_replace('\\', '/', $realTargetDir);
-        $normRoot = str_replace('\\', '/', $realRoot);
-        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normDst, $normRoot)) {
             return false;
         }
 
@@ -343,32 +299,7 @@ class FileManagerService
             return false;
         }
 
-        $realSource = realpath($source);
-        $realTargetDir = realpath($targetDir);
-        $realRoot = realpath($this->resolveFullPath(''));
-        if ($realSource === false || $realTargetDir === false || $realRoot === false) {
-            return false;
-        }
-        $normSrc = str_replace('\\', '/', $realSource);
-        $normDst = str_replace('\\', '/', $realTargetDir);
-        $normRoot = str_replace('\\', '/', $realRoot);
-        if (!str_starts_with($normSrc, $normRoot) || !str_starts_with($normDst, $normRoot)) {
-            return false;
-        }
-
-        $customName = $newName !== null ? basename(trim(PathSecurity::sanitize($newName))) : '';
-        if ($customName !== '') {
-            $customName = preg_replace('/[^a-zA-Z0-9_\. -]/', '_', $customName);
-            $customName = trim($customName);
-            if ($customName === '' || str_starts_with($customName, '.')) {
-                return false;
-            }
-            // The copy's name must be allowed exactly like an upload
-            if (!PathSecurity::isAllowedForUpload($customName)) {
-                return false;
-            }
-        }
-
+        $customName = $newName !== null ? trim(PathSecurity::sanitize($newName)) : '';
         $baseName = $customName !== '' ? $customName : basename($source);
 
         $destination = $targetDir . '/' . $baseName;
@@ -386,25 +317,10 @@ class FileManagerService
     public function readFile(string $path): string
     {
         $cleanPath = PathSecurity::sanitize($path);
-        if ($cleanPath === '') {
-            throw new \RuntimeException("Invalid file path.");
-        }
-
         $target = $this->resolveFullPath($cleanPath);
 
         if (!is_file($target)) {
             throw new \RuntimeException("File not found: {$cleanPath}");
-        }
-
-        $fileName = basename($cleanPath);
-        if (!PathSecurity::isEditable($fileName)) {
-            throw new \RuntimeException("File is not editable: {$cleanPath}");
-        }
-
-        $realTarget = realpath($target);
-        $realRoot = realpath($this->resolveFullPath(''));
-        if ($realTarget !== false && $realRoot !== false && !str_starts_with(str_replace('\\', '/', $realTarget), str_replace('\\', '/', $realRoot))) {
-            throw new \RuntimeException("Access denied: path traversal detected.");
         }
 
         $content = file_get_contents($target);
@@ -421,26 +337,15 @@ class FileManagerService
     public function saveFile(string $path, string $content): bool
     {
         $cleanPath = PathSecurity::sanitize($path);
-        if ($cleanPath === '') {
-            return false;
-        }
-
-        $fileName = basename($cleanPath);
-        if (!PathSecurity::isEditable($fileName)) {
-            return false;
-        }
-
         $target = $this->resolveFullPath($cleanPath);
+
+        if (!PathSecurity::isAllowedForUpload($cleanPath) || !PathSecurity::isEditable($cleanPath)) {
+            throw new \InvalidArgumentException("Editing or saving files with this extension is not permitted.");
+        }
 
         $dir = dirname($target);
         if (!is_dir($dir)) {
             @mkdir($dir, 0755, true);
-        }
-
-        $realDir = realpath($dir);
-        $realRoot = realpath($this->resolveFullPath(''));
-        if ($realDir !== false && $realRoot !== false && !str_starts_with(str_replace('\\', '/', $realDir), str_replace('\\', '/', $realRoot))) {
-            return false;
         }
 
         return file_put_contents($target, $content) !== false;
@@ -465,24 +370,12 @@ class FileManagerService
             throw new \InvalidArgumentException("Invalid uploaded file.");
         }
 
-        $fileSize = (int) ($file['size'] ?? (is_file($tmpName) ? filesize($tmpName) : 0));
-        $maxKb = function_exists('config') ? (int) config('filemanager.max_file_size_kb', 50000) : 50000;
-        if ($maxKb > 0 && $fileSize > ($maxKb * 1024)) {
-            throw new \InvalidArgumentException("Uploaded file exceeds maximum allowed size.");
-        }
-
         if (!PathSecurity::isAllowedForUpload($originalName)) {
             throw new \InvalidArgumentException("File extension not permitted.");
         }
 
         // Sanitize filename
-        $base = basename(str_replace('\\', '/', $originalName));
-        $safeName = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $base);
-
-        if ($safeName === '' || !PathSecurity::isAllowedForUpload($safeName)) {
-            throw new \InvalidArgumentException("File extension not permitted.");
-        }
-
+        $safeName = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
         $destPath = $targetDir . '/' . $safeName;
 
         // If file already exists, append unique suffix

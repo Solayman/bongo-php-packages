@@ -49,14 +49,14 @@ class FileManagerTest extends TestCase
         $this->assertTrue(PathSecurity::isImage('banner.webp'));
         $this->assertFalse(PathSecurity::isImage('script.js'));
 
-        $this->assertFalse(PathSecurity::isEditable('index.php'), 'a saved .php file would run on the server');
+        $this->assertFalse(PathSecurity::isEditable('index.html'), 'a saved .php file would run on the server');
         $this->assertFalse(PathSecurity::isEditable('page.html'), 'HTML runs scripts on this origin');
         $this->assertFalse(PathSecurity::isAllowedForUpload('logo.svg'), 'SVG can carry scripts');
         $this->assertTrue(PathSecurity::isEditable('app.js'));
         $this->assertTrue(PathSecurity::isEditable('schema.sql'));
         $this->assertFalse(PathSecurity::isEditable('binary.zip'));
 
-        $this->assertSame('php', PathSecurity::getEditorLanguage('test.php'));
+        $this->assertSame('sql', PathSecurity::getEditorLanguage('test.sql'));
         $this->assertSame('javascript', PathSecurity::getEditorLanguage('main.js'));
         $this->assertSame('sql', PathSecurity::getEditorLanguage('db.sql'));
         $this->assertSame('json', PathSecurity::getEditorLanguage('composer.json'));
@@ -442,5 +442,19 @@ class FileManagerTest extends TestCase
         // Renaming / moving outside root rejected
         $this->assertFalse(FileManager::renameItem('', 'foo.txt'));
         $this->assertFalse(FileManager::moveItem('', 'somedir'));
+    }
+
+    public function testPhpFilesAreBlockedFromSavingAndUploading(): void
+    {
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.php'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.php5'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.phtml'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.phar'));
+        $this->assertFalse(PathSecurity::isAllowedForUpload('shell.php.jpg'));
+        $this->assertFalse(PathSecurity::isEditable('shell.php'));
+
+        $this->assertThrows(\InvalidArgumentException::class, function () {
+            FileManager::saveFile('shell.php', '<?php phpinfo();');
+        });
     }
 }

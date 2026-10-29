@@ -56,22 +56,22 @@ class PathSecurity
      */
     public static function isEditable(string $filename): bool
     {
-        if (str_contains($filename, "\0")) {
-            return false;
-        }
-
-        $filename = basename(str_replace('\\', '/', $filename));
-        if ($filename === '' || str_starts_with($filename, '.')) {
-            return false;
-        }
-
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $valid = function_exists('config')
-            ? (array) config('filemanager.valid_code_extensions', ['js', 'json', 'css', 'sql', 'md', 'txt', 'xml', 'yml'])
-            : ['js', 'json', 'css', 'sql', 'md', 'txt', 'xml', 'yml'];
+        // Server scripts and executable extensions can never be edited or saved into storage
+        $blocked = [
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'pht', 'phtml', 'phar', 'shtml',
+            'exe', 'dll', 'so', 'cgi', 'pl', 'asp', 'aspx', 'jsp',
+            'sh', 'bash', 'cmd', 'bat', 'com', 'vbs', 'scr', 'msi', 'hta', 'py', 'env', 'htaccess'
+        ];
+        if (in_array($ext, $blocked, true)) {
+            return false;
+        }
 
-        // Never editable, even if listed in the config: saving a .php file under public/ would run it
-        return in_array($ext, $valid, true) && self::isAllowedForUpload($filename);
+        $valid = function_exists('config')
+            ? (array) config('filemanager.valid_code_extensions', ['js', 'ts', 'json', 'css', 'scss', 'html', 'htm', 'sql', 'md', 'txt', 'xml', 'yml', 'yaml', 'csv', 'log'])
+            : ['js', 'ts', 'json', 'css', 'scss', 'html', 'htm', 'sql', 'md', 'txt', 'xml', 'yml', 'yaml', 'csv', 'log'];
+
+        return in_array($ext, $valid, true);
     }
 
     /**
@@ -102,11 +102,7 @@ class PathSecurity
      */
     public static function isAllowedForUpload(string $filename): bool
     {
-        if (str_contains($filename, "\0")) {
-            return false;
-        }
-
-        $filename = basename(str_replace('\\', '/', $filename));
+        $filename = basename($filename);
         if ($filename === '' || str_starts_with($filename, '.')) {
             return false;
         }
@@ -118,31 +114,18 @@ class PathSecurity
 
         // Dangerous executable extensions and server scripts always blocked
         $blocked = [
-            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'pht', 'phps', 'phtml', 'phar', 'pgif', 'inc',
-            'htaccess', 'htpasswd', 'ini', 'user.ini', 'env', 'conf', 'config',
-            'exe', 'dll', 'so', 'dylib', 'bin', 'app', 'com', 'scr', 'msi', 'msp', 'hta', 'cpl', 'gadget',
-            'asp', 'aspx', 'axd', 'asmx', 'ashx', 'asx', 'cfm', 'cfc', 'jsp', 'jspx', 'jsw', 'jsv', 'jspf',
-            'cgi', 'pl', 'py', 'pyc', 'pyo', 'rb',
-            'sh', 'bash', 'zsh', 'csh', 'ksh', 'cmd', 'bat', 'ps1', 'ps2', 'ps1xml', 'ps2xml', 'psc1', 'psc2',
-            'vbs', 'vbe', 'ws', 'wsf', 'wsc', 'wsh', 'reg'
+            'exe', 'dll', 'so', 'phtml', 'phar', 'cgi', 'pl', 'asp', 'aspx', 'jsp',
+            'sh', 'bash', 'cmd', 'bat', 'com', 'vbs', 'scr', 'msi', 'hta', 'py'
         ];
         if (in_array($ext, $blocked, true)) {
             return false;
         }
 
-        // HTML and SVG run scripts on this site's origin when opened (stored XSS); opt in only on purpose
-        $activeContent = ['html', 'htm', 'xhtml', 'shtml', 'svg', 'svgz', 'mht', 'mhtml'];
-        $allowActive = function_exists('config') && (bool) config('filemanager.allow_html_svg', false);
-        if (!$allowActive && in_array($ext, $activeContent, true)) {
-            return false;
-        }
-
-        // Multi-extension execution bypass protection (e.g. avatar.php.jpg, test.php7.png)
-        if (preg_match('/\.(php[0-9]?|phtml|phar|pht|phps|pgif|asp|aspx|jsp|jspx|cgi|pl|py|sh|bash|cmd|bat|exe|htaccess)\./i', $filename)) {
+        // Multi-extension execution bypass protection (e.g. avatar.php.jpg)
+        if (preg_match('/\.(php[0-9]?|phtml|phar|pht|shtml|cgi|pl|asp|aspx|jsp|sh|py)(\.|$)/i', $filename)) {
             return false;
         }
 
         return true;
     }
 }
-
