@@ -1,5 +1,10 @@
 # Bongo PHP Official Packages Suite
 
+> 🌐 **Interactive Online Package Explorer**: [https://bongo.nobotech.org/packages](https://bongo.nobotech.org/packages)  
+> 📖 **Official Framework Documentation**: [https://bongo.nobotech.org](https://bongo.nobotech.org)  
+> ⚡ **Framework Benchmarks**: [https://bongo.nobotech.org/benchmarks](https://bongo.nobotech.org/benchmarks)  
+> 🐙 **Core Framework Repository**: [https://github.com/Solayman/bongo-php](https://github.com/Solayman/bongo-php)
+
 [![Tests](https://img.shields.io/badge/tests-330%20passed%20(1357%20assertions)-brightgreen.svg)](#running-package-tests)
 [![PHP](https://img.shields.io/badge/php-8.0%2B-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
